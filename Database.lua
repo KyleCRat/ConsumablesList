@@ -4,15 +4,6 @@ ADDON_NAME, CL = ...
 --- Database Config
 CL.db = {}
 
--- local function rgbaToHex(rgba)
---     local r = math.floor((rgba[1] or 1) * 255 + 0.5)
---     local g = math.floor((rgba[2] or 1) * 255 + 0.5)
---     local b = math.floor((rgba[3] or 1) * 255 + 0.5)
---     local a = math.floor((rgba[4] or 1) * 255 + 0.5)
-
---     return string.format("|c%02X%02X%02X%02X", a, r, g, b)
--- end
-
 CL.db.item_groups = {
     -- group_name = {
     --     item_ids = {
@@ -41,7 +32,7 @@ CL.db.item_groups = {
         item_ids = {
             244839, -- 11.2.0: Invigorating healing Potion
         },
-        name = "Healing Potions",
+        -- name = "Healing Potions",
         threshold = 40,
         color = 'b51f00',
     },
@@ -50,7 +41,7 @@ CL.db.item_groups = {
             -- 212250, -- 11.0.0: Draught of Silent Footfalls
             191395, -- 10.0.0: Potion of the Hushed Zephyr
         },
-        name = "Invis Pots",
+        -- name = "Invis Pots",
         threshold = 10,
         color = 'c6dbe1',
     },
