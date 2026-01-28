@@ -152,11 +152,16 @@ CL.frame:SetScript("OnEvent", function(self, event, addon)
             self:RegisterEvent("MERCHANT_SHOW")
             self:RegisterEvent("BANKFRAME_OPENED")
             self:RegisterEvent("GUILDBANKFRAME_OPENED")
+            self:RegisterEvent("PLAYER_REGEN_DISABLED")
+            self:RegisterEvent("PLAYER_REGEN_ENABLED")
         end
+    elseif event == "PLAYER_REGEN_DISABLED" then
+        CL.frame:Hide()
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        CL:Update()
+        CL.frame:Show()
     else
-        if InCombatLockdown() then
-            CL.frame:Hide()
-        else
+        if not InCombatLockdown() then
             CL:Update()
             CL.frame:Show()
         end
