@@ -1,0 +1,10 @@
+## Interface: 120000, 120001
+## Title: World Marker Bindings
+## Notes: Adds keybinds for world markers
+## Author: Yvairel
+## Version: 12.0.0-1
+## Category: Raid
+## SavedVariablesPerCharacter: ConsumablesListDB
+
+Database.lua
+ConsumablesList.lua
