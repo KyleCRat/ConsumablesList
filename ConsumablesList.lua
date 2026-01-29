@@ -1,17 +1,34 @@
 ADDON_NAME, CL = ...
 
-_G.CL = CL
-
 -------------------------------------------------------------------------------
 --- Configuration Variables
----
-local font_size = 32
-local v_height = 26
-local padding_bottom = 0
+-------------------------------------------------------------------------------
+
+local IMMEDIATELY = true
+
+local addon_color = "c00bf40bf"
+
+local      font_size = 30
+local       v_height = 28
+local  handle_offset = 64 -- Adjust Handle to the left
+local     mover_size = 32
+local padding_bottom = -3 -- Adjust all text down
+
+local full_item_names = false
+
+local AH_MOUNT_SPELL_IDS = {
+    465235, -- Trader's Gilded Brutosaur
+    264058, -- Mighty Caravan Brutosaur
+}
 
 -------------------------------------------------------------------------------
 --- Functions
----
+-------------------------------------------------------------------------------
+
+function CL:Print(msg)
+    print("|" .. addon_color .. ADDON_NAME .. ":|r " .. msg)
+end
+
 local function hex_to_rgb(hex)
     hex = hex:gsub("#", "") -- Remove # if present
     local r = tonumber(hex:sub(1, 2), 16) / 255
@@ -33,16 +50,59 @@ end
 function CL:Lock(locked)
     if locked then
         CL.frame.bg:Hide()
+        CL.frame.handle:Hide()
         CL.frame:EnableMouse(false)
     else
         CL.frame.bg:Show()
+        CL.frame.handle:Show()
         CL.frame:EnableMouse(true)
     end
 end
 
+local function IsMountedOnAHMount()
+    if not IsMounted() then return false end
+    if InCombatLockdown() then return false end
+
+    for _, spellID in ipairs(AH_MOUNT_SPELL_IDS) do
+        if C_UnitAuras.GetPlayerAuraBySpellID(spellID) then
+            return true
+        end
+    end
+
+    return false
+end
+
+function CL:HideOrShowUpdate(immediately)
+    immediately = immediately or false
+
+    -- Hide if we are in combat lockdown
+    if InCombatLockdown()
+
+    -- Hide if we are mounted unless
+    --   1. We are in a city or
+    --   2. We are mounted on a AH Mount
+    or (IsMounted() and not (IsResting() or IsMountedOnAHMount()))
+
+    -- Hide if we are instanced
+    or IsInInstance()
+
+    -- Hide if we are dead
+    or UnitIsDead("player")
+    then
+        CL.frame:Hide()
+    else
+        -- verbose and print("CL: Decided to show! Immediate: " .. (immediately and "true" or "false"))
+        CL.frame:Show()
+        CL:Update(immediately)
+    end
+end
+
 local throttle_update = false
-function CL:Update()
-    if throttle_update then return end
+
+function CL:Update(immediately)
+    immediately = immediately or false
+
+    if throttle_update and not immediately then return end
     throttle_update = true
 
     C_Timer.After(1, function()
@@ -50,7 +110,6 @@ function CL:Update()
 
         for group_id, item_group in pairs(CL.db.item_groups) do
             local item_name = C_Item.GetItemNameByID(item_group.item_ids[1])
-            local item_name_text = ((item_group and item_group.name) or item_name) .. " Remaining"
             local r,g,b = hex_to_rgb(item_group.color)
             local item_count = 0
 
@@ -65,7 +124,7 @@ function CL:Update()
                 CL.frame.item_texts[group_id].right = CL.frame:CreateFontString(nil, "OVERLAY")
                 CL.frame.item_texts[group_id].right:SetFontObject(CL.frame.font)
                 CL.frame.item_texts[group_id].right:SetTextColor(r, g, b, 1)
-                CL.frame.item_texts[group_id].right:SetText(item_name_text)
+                -- CL.frame.item_texts[group_id].right:SetText(item_name_text)
 
                 -- Create the text for the item count on the left
                 CL.frame.item_texts[group_id].left = CL.frame:CreateFontString(nil, "OVERLAY")
@@ -73,11 +132,16 @@ function CL:Update()
                 CL.frame.item_texts[group_id].left:SetTextColor(r, g, b, 1)
             end
 
-            CL.frame.item_texts[group_id].right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMRIGHT", 2, (index * v_height) + padding_bottom)
-            CL.frame.item_texts[group_id].right:SetText(item_name_text)
+            local y_offset = (index * (font_size + v_height - font_size)) + padding_bottom
 
-            CL.frame.item_texts[group_id].left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMRIGHT", -2, (index * v_height) + padding_bottom)
-            CL.frame.item_texts[group_id].left:SetText(item_count)
+            local item_name_text = ("Out of " .. ((item_group and item_group.name) or item_name))
+            local item_count_text = item_count .. "/" .. item_group.threshold -- .. ":"
+
+            CL.frame.item_texts[group_id].right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMRIGHT", handle_offset + 2, y_offset)
+            CL.frame.item_texts[group_id].right:SetText(full_item_names and item_name or item_name_text)
+
+            CL.frame.item_texts[group_id].left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMRIGHT", handle_offset + -2, y_offset)
+            CL.frame.item_texts[group_id].left:SetText(item_count_text)
 
             -- Show if there are less than the threshold of items
             if item_count < item_group.threshold then
@@ -92,46 +156,11 @@ function CL:Update()
     end)
 end
 
--------------------------------------------------------------------------------
---- Initialization
----
-
--- Create the main frame
-CL.frame = CreateFrame("Frame", "ConsumeablesListFrame", UIParent)
-CL.frame:SetSize(48, v_height)
-CL.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-CL.frame:SetMovable(true)
-CL.frame:SetClampedToScreen(true)
-
--- Make the frame draggable
-CL.frame:EnableMouse(true)
-CL.frame:RegisterForDrag("LeftButton")
-CL.frame:SetScript("OnDragStart", CL.frame.StartMoving)
-CL.frame:SetScript("OnDragStop", CL.frame.StopMovingOrSizing)
-
--- Create background
-CL.frame.bg = CL.frame:CreateTexture(nil, "BACKGROUND")
-CL.frame.bg:SetAllPoints(CL.frame)
-CL.frame.bg:SetColorTexture(0, 0, 0, 0.5)
-
--- Set up custom font (using a WoW built-in font, or replace with your own font file)
-local FONT = "Interface\\AddOns\\EvenOddGroup\\media\\fonts\\PTSansNarrow-Bold.ttf"
-
-CL.frame.font = CreateFont("EvenOddGroupFont")
-CL.frame.font:SetFont(FONT, font_size, "OUTLINE")
-CL.frame.font:SetTextColor(1, 1, 1, 1)
-
--- Container for text items
-CL.frame.item_texts = {}
-
--------------------------------------------------------------------------------
---- Event Handling
----
-CL.frame:SetScript("OnEvent", function(self, event, addon)
+function CL:EventHandler(event, addon)
     if event == "ADDON_LOADED" then
         if addon == ADDON_NAME then
             if not ConsumablesListDB then
-                print("ConsumablesListDB not available")
+                CL:Print("ConsumablesListDB not available")
                 ConsumablesListDB = {
                     locked = false
                 }
@@ -140,48 +169,140 @@ CL.frame:SetScript("OnEvent", function(self, event, addon)
                 CL:Lock(ConsumablesListDB.locked)
             end
 
-            self:UnregisterEvent("ADDON_LOADED")
+            CL.frame:UnregisterEvent("ADDON_LOADED")
 
-            self:RegisterEvent("BAG_UPDATE")
-            -- self:RegisterEvent("BAG_UPDATE_COOLDOWN")
-            self:RegisterEvent("ITEM_PUSH")
-            self:RegisterEvent("UNIT_INVENTORY_CHANGED")
-            self:RegisterEvent("ITEM_LOCK_CHANGED")
-            self:RegisterEvent("PLAYER_LOGOUT")
-            self:RegisterEvent("PLAYER_ENTERING_WORLD")
-            self:RegisterEvent("MERCHANT_SHOW")
-            self:RegisterEvent("BANKFRAME_OPENED")
-            self:RegisterEvent("GUILDBANKFRAME_OPENED")
-            self:RegisterEvent("PLAYER_REGEN_DISABLED")
-            self:RegisterEvent("PLAYER_REGEN_ENABLED")
+            CL.frame:RegisterEvent("BAG_UPDATE")
+            CL.frame:RegisterEvent("BAG_UPDATE_COOLDOWN")
+            CL.frame:RegisterEvent("ITEM_PUSH")
+            CL.frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
+            CL.frame:RegisterEvent("ITEM_LOCK_CHANGED")
+            CL.frame:RegisterEvent("PLAYER_LOGOUT")
+            CL.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+            CL.frame:RegisterEvent("MERCHANT_SHOW")
+            CL.frame:RegisterEvent("BANKFRAME_OPENED")
+            CL.frame:RegisterEvent("GUILDBANKFRAME_OPENED")
+            CL.frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+            CL.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+            CL.frame:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
+            CL.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+
+            CL:Print("Loaded. Use " .. SLASH_CONSUMABLELIST1 .. " for commands.")
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
         CL.frame:Hide()
-    elseif event == "PLAYER_REGEN_ENABLED" then
-        CL:Update()
-        CL.frame:Show()
+    elseif event == "PLAYER_REGEN_ENABLED" or           -- Entering Combat
+           event == "PLAYER_UPDATE_RESTING" or          -- Entering City
+           event == "PLAYER_MOUNT_DISPLAY_CHANGED" then -- Mounting
+        CL:HideOrShowUpdate(IMMEDIATELY)
     else
-        if not InCombatLockdown() then
-            CL:Update()
-            CL.frame:Show()
-        end
+        CL:HideOrShowUpdate()
     end
+end
+
+
+-------------------------------------------------------------------------------
+--- Initialization
+-------------------------------------------------------------------------------
+
+-- Create the main frame
+CL.frame = CreateFrame("Frame", "ConsumeablesListFrame", UIParent)
+CL.frame:SetSize(mover_size, mover_size)
+CL.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+CL.frame:SetMovable(true)
+CL.frame:SetClampedToScreen(true)
+
+-- Create background
+CL.frame.bg = CL.frame:CreateTexture(nil, "BACKGROUND")
+CL.frame.bg:SetAllPoints(CL.frame)
+CL.frame.bg:SetColorTexture(0, 0, 0, 0.5)
+
+-- Create mover texture
+CL.frame.handle = CL.frame:CreateTexture(nil, "BACKGROUND")
+CL.frame.handle:SetSize(mover_size - 2, mover_size - 2)
+CL.frame.handle:SetPoint("CENTER", CL.frame, "CENTER", 0, 0)
+CL.frame.handle:SetTexture("Interface\\CURSOR\\UI-Cursor-Move")
+CL.frame.handle:SetVertexColor(1, 1, 1, 1)
+
+-- Make the frame draggable
+CL.frame:EnableMouse(true)
+CL.frame:RegisterForDrag("LeftButton")
+CL.frame:SetScript("OnDragStart", CL.frame.StartMoving)
+CL.frame:SetScript("OnDragStop", CL.frame.StopMovingOrSizing)
+
+-- Set up custom font (using a WoW built-in font, or replace with your own font file)
+local FONT = "Interface\\AddOns\\EvenOddGroup\\media\\fonts\\PTSansNarrow-Bold.ttf"
+
+CL.frame.font = CreateFont("ConsumablesListFont")
+CL.frame.font:SetFont(FONT, font_size, "OUTLINE")
+CL.frame.font:SetTextColor(1, 1, 1, 1)
+
+-- Container for text items
+CL.frame.item_texts = {}
+
+-------------------------------------------------------------------------------
+--- Event Handling
+-------------------------------------------------------------------------------
+
+CL.frame:SetScript("OnEvent", function(self, event, addon)
+    CL:EventHandler(event, addon)
 end)
 
 -- Register events
 CL.frame:RegisterEvent("ADDON_LOADED")
 
+
 -------------------------------------------------------------------------------
 --- Slash Commands
----
+-------------------------------------------------------------------------------
+
+CL.cmds = {}
+
+CL.cmds.toggle_lock = {
+    triggers = { 'lock', 'l' },
+    name = "Lock",
+    description = "Lock or Unlock the Frame.",
+    func = function()
+        ConsumablesListDB.locked = not ConsumablesListDB.locked
+        CL:Lock(ConsumablesListDB.locked)
+        CL:Print("Frame " .. (ConsumablesListDB.locked and "L" or "Unl") .. "ocked")
+    end,
+}
+
+CL.cmds.toggle_names = {
+    triggers = { 'full', 'f' },
+    name = "Full Names",
+    description = "Toggle between full item names and nicknames.",
+    func = function()
+        full_item_names = not full_item_names
+        CL:Update(IMMEDIATELY)
+        CL:Print("Using " .. (full_item_names and "Full Names" or "Nicknames"))
+    end,
+}
+
+function CL:Help()
+    CL:Print("Available Commands:")
+    for _, cmd in pairs(CL.cmds) do
+        for _, trigger in ipairs(cmd.triggers) do
+            print("  /cl " .. trigger .. " - " .. cmd.description)
+        end
+    end
+end
+
 SLASH_CONSUMABLELIST1 = "/cl"
 
 SlashCmdList["CONSUMABLELIST"] = function(msg)
     msg = msg:lower():trim()
 
-    if msg == "l" or msg == "lock" then
-        ConsumablesListDB.locked = not ConsumablesListDB.locked
-        CL:Lock(ConsumablesListDB.locked)
-        print("Consumeables List: Frame " .. (ConsumablesListDB.locked and "L" or "Unl") .. "ocked")
+    -- Check if message is a defined command
+    for _, cmd in pairs(CL.cmds) do
+        for _, trigger in ipairs(cmd.triggers) do
+            if trigger == msg then
+                cmd.func()
+                return
+            end
+        end
     end
+
+    -- Otherwise print help
+    CL:Help()
 end
