@@ -72,8 +72,8 @@ local function IsMountedOnAHMount()
     return false
 end
 
-function CL:HideOrShowUpdate(immediately)
-    immediately = immediately or false
+function CL:HideOrShowUpdate(should_run_immediately)
+    should_run_immediately = should_run_immediately or false
 
     ---------------------------------------
     -- Checking if we should HIDE the frame
@@ -95,79 +95,79 @@ function CL:HideOrShowUpdate(immediately)
     then
         CL.frame:Hide()
     else
-        -- verbose and print("CL: Decided to show! Immediate: " .. (immediately and "true" or "false"))
         CL.frame:Show()
-        CL:Update(immediately)
+        CL:Update(should_run_immediately)
     end
 end
 
-local throttle_update = false
+local update_is_throttled = false
+local min_update_interval = 15 -- Minimum time (seconds) between automatic updates
 
-function CL:Update(immediately)
-    immediately = immediately or false
+function CL:Update(should_run_immediately)
+    should_run_immediately = should_run_immediately or false
 
-    if throttle_update and not immediately then return end
-    throttle_update = true
+    if update_is_throttled and not should_run_immediately then return end
 
-    C_Timer.After(1, function()
-        local index = 0
+    update_is_throttled = true
+    local index = 0
 
-        for group_id, item_group in pairs(CL.db.item_groups) do
-            local    item_id = item_group.item_ids[1]
-            local  item_name = C_Item.GetItemNameByID(item_id)
-            local      r,g,b = hex_to_rgb(item_group.color)
-            local item_count = 0
+    for group_id, item_group in pairs(CL.db.item_groups) do
+        local    item_id = item_group.item_ids[1]
+        local  item_name = C_Item.GetItemNameByID(item_id)
+        local      r,g,b = hex_to_rgb(item_group.color)
+        local item_count = 0
 
-            for _, id in ipairs(item_group.item_ids) do
-                item_count = item_count + GetItemCount(id, false)
-            end
-
-            if not CL.frame.item_texts[group_id] then
-                CL.frame.item_texts[group_id] = {}
-
-                -- Create the text for the item name on the right
-                CL.frame.item_texts[group_id].right = CL.frame:CreateFontString(nil, "OVERLAY")
-                CL.frame.item_texts[group_id].right:SetFontObject(CL.frame.font)
-                CL.frame.item_texts[group_id].right:SetTextColor(r, g, b, 1)
-
-                -- Create the text for the item count on the left
-                CL.frame.item_texts[group_id].left = CL.frame:CreateFontString(nil, "OVERLAY")
-                CL.frame.item_texts[group_id].left:SetFontObject(CL.frame.font)
-                CL.frame.item_texts[group_id].left:SetTextColor(r, g, b, 1)
-            end
-
-            local y_offset = (index * (font_size + v_height - font_size)) + padding_bottom
-
-            local      item_name_text = ((item_group and item_group.name) or item_name)
-            local full_item_name_text = item_name
-            local     item_count_text = item_count
-
-            -- Update text for low vs out of an item
-            if item_count == 0 then
-                item_name_text = ("Out of " ..  item_name_text)
-            else
-                item_name_text = (item_name_text .. " Low")
-            end
-
-            -- Check if `/cl f` was run and replace with full text value if so
-            item_name_text = (full_item_names and full_item_name_text) or item_name_text
-
-            CL.frame.item_texts[group_id].right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMRIGHT", handle_offset + 2, y_offset)
-            CL.frame.item_texts[group_id].right:SetText(item_name_text)
-
-            CL.frame.item_texts[group_id].left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMRIGHT", handle_offset + -2, y_offset)
-            CL.frame.item_texts[group_id].left:SetText(item_count_text)
-
-            -- Show if there are less than the threshold of items
-            if item_count < item_group.threshold then
-                index = index + 1
-                CL:ShowItemGroup(group_id)
-            else
-                CL:HideItemGroup(group_id)
-            end
+        for _, id in ipairs(item_group.item_ids) do
+            item_count = item_count + GetItemCount(id, false)
         end
 
-        throttle_update = false
+        if not CL.frame.item_texts[group_id] then
+            CL.frame.item_texts[group_id] = {}
+
+            -- Create the text for the item name on the right
+            CL.frame.item_texts[group_id].right = CL.frame:CreateFontString(nil, "OVERLAY")
+            CL.frame.item_texts[group_id].right:SetFontObject(CL.frame.font)
+            CL.frame.item_texts[group_id].right:SetTextColor(r, g, b, 1)
+
+            -- Create the text for the item count on the left
+            CL.frame.item_texts[group_id].left = CL.frame:CreateFontString(nil, "OVERLAY")
+            CL.frame.item_texts[group_id].left:SetFontObject(CL.frame.font)
+            CL.frame.item_texts[group_id].left:SetTextColor(r, g, b, 1)
+        end
+
+        local y_offset = (index * (font_size + v_height - font_size)) + padding_bottom
+
+        local      item_name_text = ((item_group and item_group.name) or item_name)
+        local full_item_name_text = item_name
+        local     item_count_text = item_count
+
+        -- Update text for low vs out of an item
+        if item_count == 0 then
+            item_name_text = ("Out of " ..  item_name_text)
+        else
+            item_name_text = (item_name_text .. " Low")
+        end
+
+        -- Check if `/cl f` was run and replace with full text value if so
+        item_name_text = (full_item_names and full_item_name_text) or item_name_text
+
+        CL.frame.item_texts[group_id].right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMRIGHT", handle_offset + 2, y_offset)
+        CL.frame.item_texts[group_id].right:SetText(item_name_text)
+
+        CL.frame.item_texts[group_id].left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMRIGHT", handle_offset + -2, y_offset)
+        CL.frame.item_texts[group_id].left:SetText(item_count_text)
+
+        -- Show if there are less than the threshold of items
+        if item_count < item_group.threshold then
+            index = index + 1
+            CL:ShowItemGroup(group_id)
+        else
+            CL:HideItemGroup(group_id)
+        end
+    end
+
+    C_Timer.After(min_update_interval, function()
+        update_is_throttled = false
     end)
 end
 
@@ -186,26 +186,25 @@ function CL:EventHandler(event, addon)
 
             CL.frame:UnregisterEvent("ADDON_LOADED")
 
-            CL.frame:RegisterEvent("BAG_UPDATE")
-            CL.frame:RegisterEvent("BAG_UPDATE_COOLDOWN")
-            CL.frame:RegisterEvent("ITEM_PUSH")
-            CL.frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
-            CL.frame:RegisterEvent("ITEM_LOCK_CHANGED")
-            CL.frame:RegisterEvent("PLAYER_LOGOUT")
-            CL.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-            CL.frame:RegisterEvent("MERCHANT_SHOW")
-            CL.frame:RegisterEvent("BANKFRAME_OPENED")
-            CL.frame:RegisterEvent("GUILDBANKFRAME_OPENED")
-            CL.frame:RegisterEvent("PLAYER_REGEN_DISABLED")
-            CL.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
-            CL.frame:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
-            CL.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+            CL.frame:RegisterEvent("BAG_UPDATE")            -- Main inventory changes
+            CL.frame:RegisterEvent("ITEM_PUSH")             -- Immediate loot feedback
+            CL.frame:RegisterEvent("PLAYER_ENTERING_WORLD") -- Initial load/zone
+            CL.frame:RegisterEvent("MERCHANT_SHOW")         -- Restocking at vendors
+
+            CL.frame:RegisterEvent("PLAYER_REGEN_DISABLED") -- Combat Enter
+            CL.frame:RegisterEvent("PLAYER_REGEN_ENABLED")  -- Combat Exit
+
+            CL.frame:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED") -- Mounting
+
+            CL.frame:RegisterEvent("PLAYER_ENTERING_WORLD") -- Login
+            CL.frame:RegisterEvent("PLAYER_UPDATE_RESTING") -- Entering a City
+            CL.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA") -- Area Change
 
             CL:Print("Loaded. Use " .. SLASH_CONSUMABLELIST1 .. " for commands.")
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
         CL.frame:Hide()
-    elseif event == "PLAYER_REGEN_ENABLED" or           -- Entering Combat
+    elseif event == "PLAYER_REGEN_ENABLED" or           -- Exiting Combat
            event == "PLAYER_UPDATE_RESTING" or          -- Entering City
            event == "PLAYER_MOUNT_DISPLAY_CHANGED" then -- Mounting
         CL:HideOrShowUpdate(IMMEDIATELY)
