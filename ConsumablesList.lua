@@ -10,7 +10,7 @@ local addon_color = "c00bf40bf"
 
 local      font_size = 30
 local       v_height = 28
-local  handle_offset = 64 -- Adjust Handle to the left
+local  handle_offset = 32 -- Adjust Handle to the left
 local     mover_size = 32
 local padding_bottom = -3 -- Adjust all text down
 
@@ -75,16 +75,20 @@ end
 function CL:HideOrShowUpdate(immediately)
     immediately = immediately or false
 
+    ---------------------------------------
+    -- Checking if we should HIDE the frame
+
     -- Hide if we are in combat lockdown
     if InCombatLockdown()
 
     -- Hide if we are mounted unless
     --   1. We are in a city or
-    --   2. We are mounted on a AH Mount
+    --   2. We are mounted on an AH Mount
     or (IsMounted() and not (IsResting() or IsMountedOnAHMount()))
 
-    -- Hide if we are instanced
-    or IsInInstance()
+    -- Hide if we are instanced unless
+    --   1. We are mounted on an AH Mount
+    or (IsInInstance() and not IsMountedOnAHMount())
 
     -- Hide if we are dead
     or UnitIsDead("player")
@@ -109,12 +113,13 @@ function CL:Update(immediately)
         local index = 0
 
         for group_id, item_group in pairs(CL.db.item_groups) do
-            local item_name = C_Item.GetItemNameByID(item_group.item_ids[1])
-            local r,g,b = hex_to_rgb(item_group.color)
+            local    item_id = item_group.item_ids[1]
+            local  item_name = C_Item.GetItemNameByID(item_id)
+            local      r,g,b = hex_to_rgb(item_group.color)
             local item_count = 0
 
-            for _, item_id in ipairs(item_group.item_ids) do
-                item_count = item_count + GetItemCount(item_id, false)
+            for _, id in ipairs(item_group.item_ids) do
+                item_count = item_count + GetItemCount(id, false)
             end
 
             if not CL.frame.item_texts[group_id] then
@@ -124,7 +129,6 @@ function CL:Update(immediately)
                 CL.frame.item_texts[group_id].right = CL.frame:CreateFontString(nil, "OVERLAY")
                 CL.frame.item_texts[group_id].right:SetFontObject(CL.frame.font)
                 CL.frame.item_texts[group_id].right:SetTextColor(r, g, b, 1)
-                -- CL.frame.item_texts[group_id].right:SetText(item_name_text)
 
                 -- Create the text for the item count on the left
                 CL.frame.item_texts[group_id].left = CL.frame:CreateFontString(nil, "OVERLAY")
@@ -134,11 +138,22 @@ function CL:Update(immediately)
 
             local y_offset = (index * (font_size + v_height - font_size)) + padding_bottom
 
-            local item_name_text = ("Out of " .. ((item_group and item_group.name) or item_name))
-            local item_count_text = item_count .. "/" .. item_group.threshold -- .. ":"
+            local      item_name_text = ((item_group and item_group.name) or item_name)
+            local full_item_name_text = item_name
+            local     item_count_text = item_count
+
+            -- Update text for low vs out of an item
+            if item_count == 0 then
+                item_name_text = ("Out of " ..  item_name_text)
+            else
+                item_name_text = (item_name_text .. " Low")
+            end
+
+            -- Check if `/cl f` was run and replace with full text value if so
+            item_name_text = (full_item_names and full_item_name_text) or item_name_text
 
             CL.frame.item_texts[group_id].right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMRIGHT", handle_offset + 2, y_offset)
-            CL.frame.item_texts[group_id].right:SetText(full_item_names and item_name or item_name_text)
+            CL.frame.item_texts[group_id].right:SetText(item_name_text)
 
             CL.frame.item_texts[group_id].left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMRIGHT", handle_offset + -2, y_offset)
             CL.frame.item_texts[group_id].left:SetText(item_count_text)
