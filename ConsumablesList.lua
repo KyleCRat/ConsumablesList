@@ -1,5 +1,6 @@
-ADDON_NAME, CL = ...
-ADDON_ABVR = "CL"
+local ADDON_NAME, CL = ...
+local ADDON_ABVR = "CL"
+
 
 -------------------------------------------------------------------------------
 --- Configuration Variables
@@ -7,7 +8,7 @@ ADDON_ABVR = "CL"
 
 local IMMEDIATELY = true
 
-local addon_color = "c00bf40bf"
+local addon_color = "00bf40bf"
 
 local      font_size = 30
 local       v_height = 28
@@ -27,13 +28,13 @@ local AH_MOUNT_SPELL_IDS = {
 -------------------------------------------------------------------------------
 
 function CL:Print(msg)
-    print("|" .. addon_color .. ADDON_NAME .. ":|r " .. msg)
+    print("|c" .. addon_color .. ADDON_NAME .. ":|r " .. msg)
 end
 
 function CL:VPrint(msg)
     if not verbose then return end
 
-    print("|" .. addon_color .. ADDON_ABVR .. ":|r " .. msg)
+    print("|c" .. addon_color .. ADDON_ABVR .. ":|r " .. msg)
 end
 
 local function hex_to_rgb(hex)
@@ -251,9 +252,9 @@ CL.frame.item_texts = {}
 --- Event Handling
 -------------------------------------------------------------------------------
 
-local function EventHandler(self, event, addon)
+local function EventHandler(self, event, arg1)
     if event == "ADDON_LOADED" then
-        if addon == ADDON_NAME then
+        if arg1 == ADDON_NAME then
             if not ConsumablesListDB then
                 CL:Print("ConsumablesListDB not available")
                 ConsumablesListDB = {
@@ -280,7 +281,9 @@ local function EventHandler(self, event, addon)
             CL.frame:RegisterEvent("PLAYER_UPDATE_RESTING") -- Entering a City
             CL.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA") -- Area Change
 
-            CL:Print("Loaded. Use " .. SLASH_CONSUMABLELIST1 .. " for commands.")
+            CL:HideOrShowUpdate(IMMEDIATELY)
+
+            CL:Print("Loaded. Use " .. SLASH_CONSUMABLESLIST1 .. " for commands.")
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
         CL:VPrint("Hiding for combat enter: " .. event)

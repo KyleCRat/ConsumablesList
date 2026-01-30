@@ -1,4 +1,4 @@
-ADDON_NAME, CL = ...
+local ADDON_NAME, CL = ...
 
 
 -------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ CL.cmds.toggle_names = {
 }
 
 CL.cmds.toggle_debug = {
-    triggers = { 'debug', 'd', 'verbose', 'v' },
+    triggers = { 'debug', 'd' },
     name = "Debug Messages",
     description = "Show debug messages",
     func = function() CL:ToggleDebug() end,
@@ -32,38 +32,34 @@ CL.cmds.toggle_debug = {
 --- Slash Command Handling
 -------------------------------------------------------------------------------
 
-local triggers = {}
-local max_cmd_len = 0
-
 function CL:Help()
     CL:Print("Available Commands:")
 
-    for trigger, cmd in pairs(triggers) do
-        local trigger_len = #trigger
-        local len_diff = max_cmd_len - trigger_len
-
-        print("  /cl " .. trigger .. string.rep(" ", len_diff) .. " - " .. cmd.description)
+    for _, cmd in pairs(CL.cmds) do
+        print(string.format("  %s %-10s - %s",
+                            SLASH_CONSUMABLESLIST1,
+                            table.concat(cmd.triggers, ", "),
+                            cmd.description))
     end
 end
 
-for _, cmd in pairs(CL.cmds) do
-    for _, trigger in ipairs(cmd.triggers) do
-         if max_cmd_len < #trigger then max_cmd_len = #trigger end
+SLASH_CONSUMABLESLIST1 = "/cl"
 
-        triggers[trigger] = cmd
-    end
-end
-
-SLASH_CONSUMABLELIST1 = "/cl"
-
-SlashCmdList["CONSUMABLELIST"] = function(msg)
+SlashCmdList[strupper(ADDON_NAME)] = function(msg)
     msg = msg:lower():trim()
 
-    CL:VPrint("/cl " .. (msg ~= "" and msg or "(no msg)") .. " received")
+    CL:VPrint(string.format("%s %s received",
+                            SLASH_CONSUMABLESLIST1,
+                            msg ~= "" and msg or "(no msg)"))
 
-    if triggers[msg] then
-        triggers[msg].func()
-    else
-        CL:Help()
+    for _, cmd in pairs(CL.cmds) do
+        for _, trigger in ipairs(cmd.triggers) do
+            if msg == trigger then
+                cmd.func()
+                return
+            end
+        end
     end
+
+    CL:Help()
 end
