@@ -1,4 +1,5 @@
 ADDON_NAME, CL = ...
+ADDON_ABVR = "CL"
 
 -------------------------------------------------------------------------------
 --- Configuration Variables
@@ -29,6 +30,12 @@ function CL:Print(msg)
     print("|" .. addon_color .. ADDON_NAME .. ":|r " .. msg)
 end
 
+function CL:VPrint(msg)
+    if not verbose then return end
+
+    print("|" .. addon_color .. ADDON_ABVR .. ":|r " .. msg)
+end
+
 local function hex_to_rgb(hex)
     hex = hex:gsub("#", "") -- Remove # if present
     local r = tonumber(hex:sub(1, 2), 16) / 255
@@ -47,6 +54,12 @@ function CL:ShowItemGroup(group_name)
     CL.frame.item_texts[group_name].right:Show()
 end
 
+function CL:ToggleLock()
+    ConsumablesListDB.locked = not ConsumablesListDB.locked
+    CL:Lock(ConsumablesListDB.locked)
+    CL:Print("Frame " .. (ConsumablesListDB.locked and "L" or "Unl") .. "ocked")
+end
+
 function CL:Lock(locked)
     if locked then
         CL.frame.bg:Hide()
@@ -57,6 +70,18 @@ function CL:Lock(locked)
         CL.frame.handle:Show()
         CL.frame:EnableMouse(true)
     end
+end
+
+function CL:ToggleFullNames()
+    full_item_names = not full_item_names
+    CL:Print("Using " .. (full_item_names and "Full Names" or "Nicknames"))
+    CL:Update(IMMEDIATELY)
+end
+
+function CL:ToggleDebug()
+    verbose = not verbose
+    CL:Print("debug turned " .. (verbose and "on" or "off"))
+    CL:Update(IMMEDIATELY)
 end
 
 local function IsMountedOnAHMount()
@@ -75,26 +100,33 @@ end
 function CL:HideOrShowUpdate(should_run_immediately)
     should_run_immediately = should_run_immediately or false
 
+    inInstance, instanceType = IsInInstance()
+
     ---------------------------------------
     -- Checking if we should HIDE the frame
 
     -- Hide if we are in combat lockdown
     if InCombatLockdown()
 
+    -- Hide if we are instanced unless
+    --   1. We are mounted on an AH Mount
+    --   2. We are in a neighborhood
+    or (inInstance and not (IsMountedOnAHMount() or
+                            instanceType == "neighborhood"))
+
     -- Hide if we are mounted unless
     --   1. We are in a city or
     --   2. We are mounted on an AH Mount
-    or (IsMounted() and not (IsResting() or IsMountedOnAHMount()))
-
-    -- Hide if we are instanced unless
-    --   1. We are mounted on an AH Mount
-    or (IsInInstance() and not IsMountedOnAHMount())
+    or (IsMounted() and not (IsResting() or
+                             IsMountedOnAHMount()))
 
     -- Hide if we are dead
     or UnitIsDead("player")
     then
+        CL:VPrint("Frame should be Hidden")
         CL.frame:Hide()
     else
+        CL:VPrint("Frame should be Shown")
         CL.frame:Show()
         CL:Update(should_run_immediately)
     end
@@ -141,6 +173,8 @@ function CL:Update(should_run_immediately)
         local full_item_name_text = item_name
         local     item_count_text = item_count
 
+        -- CL:VPrint(item_name .. ":" .. item_count)
+
         -- Update text for low vs out of an item
         if item_count == 0 then
             item_name_text = ("Out of " ..  item_name_text)
@@ -171,7 +205,53 @@ function CL:Update(should_run_immediately)
     end)
 end
 
-function CL:EventHandler(event, addon)
+
+-------------------------------------------------------------------------------
+--- Initialization
+-------------------------------------------------------------------------------
+
+-- Create the main frame
+CL.frame = CreateFrame("Frame", "ConsumablesListFrame", UIParent)
+CL.frame:SetSize(mover_size, mover_size)
+CL.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+CL.frame:SetMovable(true)
+CL.frame:SetClampedToScreen(true)
+CL.frame:Hide()
+
+-- Create background
+CL.frame.bg = CL.frame:CreateTexture(nil, "BACKGROUND")
+CL.frame.bg:SetAllPoints(CL.frame)
+CL.frame.bg:SetColorTexture(0, 0, 0, 0.5)
+
+-- Create mover texture
+CL.frame.handle = CL.frame:CreateTexture(nil, "BACKGROUND")
+CL.frame.handle:SetSize(mover_size - 2, mover_size - 2)
+CL.frame.handle:SetPoint("CENTER", CL.frame, "CENTER", 0, 0)
+CL.frame.handle:SetTexture("Interface\\CURSOR\\UI-Cursor-Move")
+CL.frame.handle:SetVertexColor(1, 1, 1, 1)
+
+-- Make the frame draggable
+CL.frame:EnableMouse(true)
+CL.frame:RegisterForDrag("LeftButton")
+CL.frame:SetScript("OnDragStart", CL.frame.StartMoving)
+CL.frame:SetScript("OnDragStop", CL.frame.StopMovingOrSizing)
+
+-- Set up custom font (using a WoW built-in font, or replace with your own font file)
+local FONT = "Interface\\AddOns\\ConsumablesList\\media\\fonts\\PTSansNarrow-Bold.ttf"
+
+CL.frame.font = CreateFont("ConsumablesListFont")
+CL.frame.font:SetFont(FONT, font_size, "OUTLINE")
+CL.frame.font:SetTextColor(1, 1, 1, 1)
+
+-- Container for text items
+CL.frame.item_texts = {}
+
+
+-------------------------------------------------------------------------------
+--- Event Handling
+-------------------------------------------------------------------------------
+
+local function EventHandler(self, event, addon)
     if event == "ADDON_LOADED" then
         if addon == ADDON_NAME then
             if not ConsumablesListDB then
@@ -203,121 +283,20 @@ function CL:EventHandler(event, addon)
             CL:Print("Loaded. Use " .. SLASH_CONSUMABLELIST1 .. " for commands.")
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
+        CL:VPrint("Hiding for combat enter: " .. event)
         CL.frame:Hide()
     elseif event == "PLAYER_REGEN_ENABLED" or           -- Exiting Combat
            event == "PLAYER_UPDATE_RESTING" or          -- Entering City
            event == "PLAYER_MOUNT_DISPLAY_CHANGED" then -- Mounting
+        CL:VPrint("Update IMMEDIATELY for: " .. event)
         CL:HideOrShowUpdate(IMMEDIATELY)
     else
+        CL:VPrint("Update Lazily for: " .. event)
         CL:HideOrShowUpdate()
     end
 end
 
-
--------------------------------------------------------------------------------
---- Initialization
--------------------------------------------------------------------------------
-
--- Create the main frame
-CL.frame = CreateFrame("Frame", "ConsumeablesListFrame", UIParent)
-CL.frame:SetSize(mover_size, mover_size)
-CL.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-CL.frame:SetMovable(true)
-CL.frame:SetClampedToScreen(true)
-CL.frame:Hide()
-
--- Create background
-CL.frame.bg = CL.frame:CreateTexture(nil, "BACKGROUND")
-CL.frame.bg:SetAllPoints(CL.frame)
-CL.frame.bg:SetColorTexture(0, 0, 0, 0.5)
-
--- Create mover texture
-CL.frame.handle = CL.frame:CreateTexture(nil, "BACKGROUND")
-CL.frame.handle:SetSize(mover_size - 2, mover_size - 2)
-CL.frame.handle:SetPoint("CENTER", CL.frame, "CENTER", 0, 0)
-CL.frame.handle:SetTexture("Interface\\CURSOR\\UI-Cursor-Move")
-CL.frame.handle:SetVertexColor(1, 1, 1, 1)
-
--- Make the frame draggable
-CL.frame:EnableMouse(true)
-CL.frame:RegisterForDrag("LeftButton")
-CL.frame:SetScript("OnDragStart", CL.frame.StartMoving)
-CL.frame:SetScript("OnDragStop", CL.frame.StopMovingOrSizing)
-
--- Set up custom font (using a WoW built-in font, or replace with your own font file)
-local FONT = "Interface\\AddOns\\EvenOddGroup\\media\\fonts\\PTSansNarrow-Bold.ttf"
-
-CL.frame.font = CreateFont("ConsumablesListFont")
-CL.frame.font:SetFont(FONT, font_size, "OUTLINE")
-CL.frame.font:SetTextColor(1, 1, 1, 1)
-
--- Container for text items
-CL.frame.item_texts = {}
-
--------------------------------------------------------------------------------
---- Event Handling
--------------------------------------------------------------------------------
-
-CL.frame:SetScript("OnEvent", function(self, event, addon)
-    CL:EventHandler(event, addon)
-end)
-
 -- Register events
 CL.frame:RegisterEvent("ADDON_LOADED")
 
-
--------------------------------------------------------------------------------
---- Slash Commands
--------------------------------------------------------------------------------
-
-CL.cmds = {}
-
-CL.cmds.toggle_lock = {
-    triggers = { 'lock', 'l' },
-    name = "Lock",
-    description = "Lock or Unlock the Frame.",
-    func = function()
-        ConsumablesListDB.locked = not ConsumablesListDB.locked
-        CL:Lock(ConsumablesListDB.locked)
-        CL:Print("Frame " .. (ConsumablesListDB.locked and "L" or "Unl") .. "ocked")
-    end,
-}
-
-CL.cmds.toggle_names = {
-    triggers = { 'full', 'f' },
-    name = "Full Names",
-    description = "Toggle between full item names and nicknames.",
-    func = function()
-        full_item_names = not full_item_names
-        CL:Update(IMMEDIATELY)
-        CL:Print("Using " .. (full_item_names and "Full Names" or "Nicknames"))
-    end,
-}
-
-function CL:Help()
-    CL:Print("Available Commands:")
-    for _, cmd in pairs(CL.cmds) do
-        for _, trigger in ipairs(cmd.triggers) do
-            print("  /cl " .. trigger .. " - " .. cmd.description)
-        end
-    end
-end
-
-SLASH_CONSUMABLELIST1 = "/cl"
-
-SlashCmdList["CONSUMABLELIST"] = function(msg)
-    msg = msg:lower():trim()
-
-    -- Check if message is a defined command
-    for _, cmd in pairs(CL.cmds) do
-        for _, trigger in ipairs(cmd.triggers) do
-            if trigger == msg then
-                cmd.func()
-                return
-            end
-        end
-    end
-
-    -- Otherwise print help
-    CL:Help()
-end
+CL.frame:SetScript("OnEvent", EventHandler)

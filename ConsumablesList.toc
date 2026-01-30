@@ -1,10 +1,11 @@
 ## Interface: 120000, 120001
-## Title: World Marker Bindings
-## Notes: Adds keybinds for world markers
+## Title: Consumables List
+## Notes: Text list of Consumables that shows when below set thresholds
 ## Author: Yvairel
 ## Version: 12.0.0-1
-## Category: Raid
+## Category: Consumables
 ## SavedVariablesPerCharacter: ConsumablesListDB
 
 Database.lua
+Commands.lua
 ConsumablesList.lua
