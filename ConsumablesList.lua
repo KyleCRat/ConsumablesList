@@ -291,7 +291,7 @@ local function EventHandler(self, event, addon)
         CL:VPrint("Update IMMEDIATELY for: " .. event)
         CL:HideOrShowUpdate(IMMEDIATELY)
     else
-        CL:VPrint("Update Lazily for: " .. event)
+        CL:VPrint("Update LAZILY for: " .. event)
         CL:HideOrShowUpdate()
     end
 end
