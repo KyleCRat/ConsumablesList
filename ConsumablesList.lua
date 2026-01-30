@@ -224,6 +224,7 @@ CL.frame:SetSize(mover_size, mover_size)
 CL.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 CL.frame:SetMovable(true)
 CL.frame:SetClampedToScreen(true)
+CL.frame:Hide()
 
 -- Create background
 CL.frame.bg = CL.frame:CreateTexture(nil, "BACKGROUND")
