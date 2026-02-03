@@ -1,5 +1,5 @@
 local ADDON_NAME, CL = ...
-local ADDON_ABVR = "CL"
+CL.abbv = "CL"
 
 
 -------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ end
 function CL:VPrint(msg)
     if not verbose then return end
 
-    print("|c" .. addon_color .. ADDON_ABVR .. ":|r " .. msg)
+    print("|c" .. addon_color .. CL.abbv .. ":|r " .. msg)
 end
 
 local function hex_to_rgb(hex)
@@ -149,6 +149,16 @@ function CL:Update(should_run_immediately)
         local  item_name = C_Item.GetItemNameByID(item_id)
         local      r,g,b = hex_to_rgb(item_group.color)
         local item_count = 0
+
+        -- Prevent LUA error if our item isn't in cache yet, re-try in a second
+        if not ((item_group and item_group.name) or item_name) then
+            CL.VPrint("CL: Item not cached, no name found for item_id: " .. item_id)
+            C_Timer.After(1, function()
+                CL:Update(IMMEDIATELY)
+            end)
+
+            return
+        end
 
         for _, id in ipairs(item_group.item_ids) do
             item_count = item_count + GetItemCount(id, false)
@@ -280,8 +290,6 @@ local function EventHandler(self, event, arg1)
             CL.frame:RegisterEvent("PLAYER_ENTERING_WORLD") -- Login
             CL.frame:RegisterEvent("PLAYER_UPDATE_RESTING") -- Entering a City
             CL.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA") -- Area Change
-
-            CL:HideOrShowUpdate(IMMEDIATELY)
 
             CL:Print("Loaded. Use " .. SLASH_CONSUMABLESLIST1 .. " for commands.")
         end
