@@ -15,6 +15,8 @@ local     v_height = 29
 local text_offset = 3
 local padding_bottom = -3 -- Adjust all text down
 
+local frame_width = 300
+
 local full_item_names = false
 
 local AH_MOUNT_SPELL_IDS = {
@@ -56,6 +58,19 @@ function CL:HexToRGB(hex)
     local b = tonumber(hex:sub(5, 6), 16) / 255
 
     return r, g, b
+end
+
+function CL:GetSortedGroups()
+    local sorted = {}
+    for key, group in pairs(CL.db.item_groups) do
+        sorted[#sorted + 1] = { key = key, group = group }
+    end
+
+    table.sort(sorted, function(a, b)
+        return (a.group.order or 0) < (b.group.order or 0)
+    end)
+
+    return sorted
 end
 
 function CL:HideItemGroup(group_name)
@@ -131,6 +146,7 @@ function CL:HideOrShowUpdate(should_run_immediately)
     or UnitIsDead("player")
     then
         CL:VPrint("Frame should be Hidden")
+        CL:Update(should_run_immediately)
         CL.frame:Hide()
     else
         CL:VPrint("Frame should be Shown")
@@ -222,23 +238,15 @@ function CL:Update(should_run_immediately)
         end -- else (has item_id)
     end
 
-    -- Resize frame to fit visible rows and reposition text
-    local visible_count = index
+    -- Resize frame height to fit visible rows, width is fixed
     local row_height = v_height
-    local frame_height = math.max(1, visible_count * row_height)
-    local max_width = 1
+    local frame_height = math.max(row_height, index * row_height)
 
-    -- Measure widths and reposition anchors
-    local row_index = 0
-    for group_id, texts in pairs(CL.frame.item_texts) do
-        if texts.left:IsShown() then
-            local left_width = texts.left:GetStringWidth()
-            local right_width = texts.right:GetStringWidth()
-            local total_width = left_width + right_width + (text_offset * 3)
-            if total_width > max_width then
-                max_width = total_width
-            end
-
+    -- Reposition text rows in sorted order (top-down, so first group appears at top)
+    local row_index = index - 1
+    for _, entry in ipairs(CL:GetSortedGroups()) do
+        local texts = CL.frame.item_texts[entry.key]
+        if texts and texts.left:IsShown() then
             local y_offset = (row_index * row_height) + padding_bottom
             texts.right:ClearAllPoints()
             texts.right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMLEFT", text_offset, y_offset)
@@ -246,11 +254,11 @@ function CL:Update(should_run_immediately)
             texts.left:ClearAllPoints()
             texts.left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMLEFT", -text_offset, y_offset)
 
-            row_index = row_index + 1
+            row_index = row_index - 1
         end
     end
 
-    CL.frame:SetSize(math.max(1, max_width), frame_height)
+    CL.frame:SetHeight(frame_height)
 
     C_Timer.After(min_update_interval, function()
         update_is_throttled = false
@@ -264,8 +272,8 @@ end
 
 -- Create the main frame
 CL.frame = CreateFrame("Frame", "ConsumablesListFrame", UIParent)
-CL.frame:SetSize(1, 1)
-CL.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+CL.frame:SetSize(frame_width, 1)
+CL.frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 20, 200)
 CL.frame:SetMovable(true)
 CL.frame:SetClampedToScreen(true)
 CL.frame:Hide()
@@ -292,7 +300,7 @@ local function OnLayoutChanged(layoutName)
     end
 end
 
-LibEditMode:AddFrame(CL.frame, OnPositionChanged, { point = "CENTER", x = 0, y = 0 }, "Consumables List")
+LibEditMode:AddFrame(CL.frame, OnPositionChanged, { point = "BOTTOMLEFT", x = 20, y = 200 }, "Consumables List")
 LibEditMode:RegisterCallback("layout", OnLayoutChanged)
 
 -- Set up custom font (using a WoW built-in font, or replace with your own font file)
@@ -325,6 +333,15 @@ local function EventHandler(self, event, arg1)
                 ConsumablesListDB.item_groups = CL.db.item_groups
             end
 
+            -- Backfill order for any groups that predate the order field
+            local next_order = 1
+            for _, group in pairs(CL.db.item_groups) do
+                if not group.order then
+                    group.order = next_order
+                    next_order = next_order + 1
+                end
+            end
+
             CL.frame:UnregisterEvent("ADDON_LOADED")
 
             CL.frame:RegisterEvent("BAG_UPDATE")            -- Main inventory changes
@@ -349,6 +366,10 @@ local function EventHandler(self, event, arg1)
     elseif event == "PLAYER_REGEN_ENABLED" or           -- Exiting Combat
            event == "PLAYER_UPDATE_RESTING" or          -- Entering City
            event == "PLAYER_MOUNT_DISPLAY_CHANGED" then -- Mounting
+        CL:VPrint("Update IMMEDIATELY for: " .. event)
+        CL:HideOrShowUpdate(IMMEDIATELY)
+    elseif event == "BAG_UPDATE" or                     -- Inventory changes
+           event == "ITEM_PUSH" then                    -- Immediate loot feedback
         CL:VPrint("Update IMMEDIATELY for: " .. event)
         CL:HideOrShowUpdate(IMMEDIATELY)
     else

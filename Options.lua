@@ -16,6 +16,7 @@ local ICON_SIZE = 34
 local ICON_PADDING = 4
 local GROUP_BUTTON_HEIGHT = 26
 local TRASH_ICON_SIZE = 18
+local DRAG_HANDLE_WIDTH = 14
 
 local GOLD = { 1, 0.82, 0, 1 }
 local BORDER_NORMAL = { 0.6, 0.6, 0.6, 1 }
@@ -55,6 +56,12 @@ local group_buttons = {}
 local item_rows = {}
 local bag_buttons = {}
 local bag_filter_buttons = {}
+
+local drag_state = {
+    active = false,
+    source_key = nil,
+    ghost = nil,
+}
 
 -- Item class filters: classID -> { name, icon }
 local ITEM_CLASS_FILTERS = {
@@ -287,6 +294,21 @@ local function generate_group_key()
     return key
 end
 
+local function get_next_order()
+    local max_order = 0
+    for _, group in pairs(CL.db.item_groups) do
+        if (group.order or 0) > max_order then
+            max_order = group.order
+        end
+    end
+
+    return max_order + 1
+end
+
+local function get_sorted_groups()
+    return CL:GetSortedGroups()
+end
+
 local function delete_group(key)
     local group = CL.db.item_groups[key]
     if not group then return end
@@ -318,17 +340,185 @@ local function select_group(key)
     CL:RefreshBagPanel()
 end
 
+local function get_or_create_drag_ghost()
+    if drag_state.ghost then
+        return drag_state.ghost
+    end
+
+    local ghost = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    ghost:SetSize(GROUP_LIST_WIDTH, GROUP_BUTTON_HEIGHT)
+    ghost:SetFrameStrata("TOOLTIP")
+    ghost:SetBackdrop(BACKDROP)
+    ghost:SetBackdropColor(0.2, 0.18, 0.1, 0.9)
+    ghost:SetBackdropBorderColor(unpack(BORDER_HIGHLIGHT))
+    ghost:Hide()
+
+    ghost.text = ghost:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    ghost.text:SetPoint("LEFT", ghost, "LEFT", 6, 0)
+    ghost.text:SetPoint("RIGHT", ghost, "RIGHT", -6, 0)
+    ghost.text:SetWordWrap(false)
+    ghost.text:SetTextColor(unpack(GOLD))
+
+    ghost:SetScript("OnUpdate", function(self)
+        local x, y = GetCursorPosition()
+        local scale = UIParent:GetEffectiveScale()
+        self:ClearAllPoints()
+        self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale - 8, y / scale + GROUP_BUTTON_HEIGHT / 2)
+
+        -- Highlight the row under the cursor
+        local cx, cy = x / scale, y / scale
+        for _, btn_row in ipairs(group_buttons) do
+            if btn_row:IsShown() and btn_row:GetBottom() then
+                local is_target = btn_row._group_key ~= drag_state.source_key
+                    and cx >= btn_row:GetLeft() and cx <= btn_row:GetRight()
+                    and cy >= btn_row:GetBottom() and cy <= btn_row:GetTop()
+
+                if is_target then
+                    btn_row._drop_highlight:Show()
+                else
+                    btn_row._drop_highlight:Hide()
+                end
+            end
+        end
+    end)
+
+    drag_state.ghost = ghost
+
+    return ghost
+end
+
+local function reorder_groups(source_key, target_key)
+    local source_order = CL.db.item_groups[source_key].order
+    local target_order = CL.db.item_groups[target_key].order
+
+    if source_order == target_order then return end
+
+    if source_order < target_order then
+        -- Moving down: shift items between source+1 and target up by 1
+        for _, group in pairs(CL.db.item_groups) do
+            if group.order > source_order and group.order <= target_order then
+                group.order = group.order - 1
+            end
+        end
+    else
+        -- Moving up: shift items between target and source-1 down by 1
+        for _, group in pairs(CL.db.item_groups) do
+            if group.order >= target_order and group.order < source_order then
+                group.order = group.order + 1
+            end
+        end
+    end
+
+    CL.db.item_groups[source_key].order = target_order
+end
+
+local function find_drop_target_key()
+    local scale = UIParent:GetEffectiveScale()
+    local cx, cy = GetCursorPosition()
+    cx, cy = cx / scale, cy / scale
+
+    for _, btn_row in ipairs(group_buttons) do
+        if btn_row:IsShown() and btn_row:GetBottom() then
+            local left = btn_row:GetLeft()
+            local right = btn_row:GetRight()
+            local bottom = btn_row:GetBottom()
+            local top = btn_row:GetTop()
+
+            if cx >= left and cx <= right and cy >= bottom and cy <= top then
+                return btn_row._group_key
+            end
+        end
+    end
+
+    return nil
+end
+
+local function finish_drag(dropped_on_target)
+    if not drag_state.active then return end
+
+    if dropped_on_target then
+        local target_key = find_drop_target_key()
+
+        if target_key and target_key ~= drag_state.source_key then
+            reorder_groups(drag_state.source_key, target_key)
+        end
+    end
+
+    -- Clear all drop highlights before refreshing
+    for _, btn_row in ipairs(group_buttons) do
+        if btn_row._drop_highlight then
+            btn_row._drop_highlight:Hide()
+        end
+    end
+
+    drag_state.active = false
+    drag_state.source_key = nil
+    drag_state.ghost:Hide()
+    CL:RefreshGroupList()
+    CL:RebuildDisplay()
+end
+
 local function create_group_button(parent, index, key, group)
-    -- Row frame holding both the group button and trash icon
+    -- Row frame holding drag handle, group button, and trash icon
     local row = CreateFrame("Frame", nil, parent)
     local row_width = parent:GetWidth()
     row:SetSize(row_width, GROUP_BUTTON_HEIGHT)
     row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -(index - 1) * (GROUP_BUTTON_HEIGHT + 3))
+    row._group_key = key
 
-    -- Group select button (leaves room for trash icon on the right)
-    local btn_width = row_width - TRASH_ICON_SIZE - 6
+    -- Drop highlight (shown when dragging over this row)
+    local drop_highlight = row:CreateTexture(nil, "BACKGROUND")
+    drop_highlight:SetAllPoints()
+    drop_highlight:SetColorTexture(1, 0.82, 0, 0.2)
+    drop_highlight:Hide()
+    row._drop_highlight = drop_highlight
+
+    -- Drag handle on the left
+    local handle = CreateFrame("Button", nil, row)
+    handle:SetSize(DRAG_HANDLE_WIDTH, GROUP_BUTTON_HEIGHT)
+    handle:SetPoint("LEFT", row, "LEFT", 0, 0)
+
+    local handle_tex = handle:CreateTexture(nil, "ARTWORK")
+    handle_tex:SetSize(DRAG_HANDLE_WIDTH - 2, GROUP_BUTTON_HEIGHT - 6)
+    handle_tex:SetPoint("CENTER", handle, "CENTER", 0, 0)
+    handle_tex:SetAtlas("UI-QuestTracker-Objective-Nub")
+    handle_tex:SetDesaturated(true)
+    handle_tex:SetAlpha(0.4)
+
+    handle:SetScript("OnEnter", function()
+        handle_tex:SetAlpha(1.0)
+        GameTooltip:SetOwner(handle, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Drag to reorder")
+        GameTooltip:Show()
+    end)
+
+    handle:SetScript("OnLeave", function()
+        if not drag_state.active then
+            handle_tex:SetAlpha(0.4)
+        end
+
+        GameTooltip:Hide()
+    end)
+
+    handle:RegisterForDrag("LeftButton")
+
+    handle:SetScript("OnDragStart", function()
+        drag_state.active = true
+        drag_state.source_key = key
+
+        local ghost = get_or_create_drag_ghost()
+        ghost.text:SetText(get_group_display_name(group))
+        ghost:Show()
+    end)
+
+    handle:SetScript("OnDragStop", function()
+        finish_drag(true)
+    end)
+
+    -- Group select button (leaves room for handle on left and trash on right)
+    local btn_width = row_width - DRAG_HANDLE_WIDTH - TRASH_ICON_SIZE - 6
     local btn = create_styled_button(row, btn_width, GROUP_BUTTON_HEIGHT, get_group_display_name(group))
-    btn:SetPoint("LEFT", row, "LEFT", 0, 0)
+    btn:SetPoint("LEFT", handle, "RIGHT", 0, 0)
 
     if key == selected_group_key then
         btn._selected = true
@@ -377,14 +567,13 @@ function CL:RefreshGroupList()
     local scroll_child = CL.options_frame.group_scroll_child
     clear_group_buttons(scroll_child)
 
-    local index = 1
-    for key, group in pairs(CL.db.item_groups) do
-        local row = create_group_button(scroll_child, index, key, group)
+    local sorted = get_sorted_groups()
+    for index, entry in ipairs(sorted) do
+        local row = create_group_button(scroll_child, index, entry.key, entry.group)
         group_buttons[#group_buttons + 1] = row
-        index = index + 1
     end
 
-    scroll_child:SetHeight(math.max(1, (index - 1) * (GROUP_BUTTON_HEIGHT + 3)))
+    scroll_child:SetHeight(math.max(1, #sorted * (GROUP_BUTTON_HEIGHT + 3)))
 end
 
 -------------------------------------------------------------------------------
@@ -585,6 +774,14 @@ local function add_item_to_selected_group(item_id)
     end
 
     group.item_ids[#group.item_ids + 1] = item_id
+
+    if group.name == "New Group" or group.name == "Empty Group" then
+        local item_name = C_Item.GetItemNameByID(item_id)
+        if item_name then
+            group.name = item_name
+        end
+    end
+
     CL:RefreshOptionsEditor()
     CL:RefreshBagPanel()
     CL:RebuildDisplay()
@@ -734,7 +931,14 @@ local function build_editor(parent, right_width, editor_height)
         local group = CL.db.item_groups[selected_group_key]
         if not group then return end
 
-        group.name = self:GetText()
+        local text = self:GetText()
+        if text == "" then
+            local first_item_name = group.item_ids[1] and C_Item.GetItemNameByID(group.item_ids[1])
+            text = first_item_name or "Empty Group"
+            self:SetText(text)
+        end
+
+        group.name = text
         CL:RefreshGroupList()
         CL:RebuildDisplay()
     end)
@@ -778,6 +982,9 @@ local function build_editor(parent, right_width, editor_height)
     create_label(editor, "Color:", label_x, -65)
     editor.color_box = create_styled_editbox(editor, 90, field_x, -60)
     editor.color_box:SetMaxLetters(6)
+    editor.color_box:HookScript("OnEditFocusGained", function(self)
+        self:HighlightText()
+    end)
     editor.color_box:SetScript("OnTextChanged", function(self, userInput)
         if not userInput then return end
 
@@ -937,7 +1144,7 @@ local function build_options_frame()
     -- Close button
     local close_btn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close_btn:SetSize(24, 24)
-    close_btn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+    close_btn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
     close_btn:SetScript("OnClick", function()
         frame:Hide()
     end)
@@ -973,6 +1180,7 @@ local function build_options_frame()
             threshold = 10,
             color = "ffffff",
             name = "New Group",
+            order = get_next_order(),
         }
         select_group(key)
         CL:RebuildDisplay()

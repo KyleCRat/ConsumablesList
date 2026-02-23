@@ -4,7 +4,7 @@
 ## Author: Yvairel
 ## Version: 12.0.1-1
 ## Category: Consumables
-## SavedVariablesPerCharacter: ConsumablesListDB
+## SavedVariables: ConsumablesListDB
 
 Libs\LibEditMode\LibStub\LibStub.lua
 Libs\LibEditMode\embed.xml
