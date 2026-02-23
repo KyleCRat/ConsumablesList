@@ -11,8 +11,8 @@ local IMMEDIATELY = true
 local addon_color = "00bf40bf"
 
 local    font_size = 30
-local     v_height = 28
-local text_offset = 4
+local     v_height = 29
+local text_offset = 3
 local padding_bottom = -3 -- Adjust all text down
 
 local full_item_names = false
