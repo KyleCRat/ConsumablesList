@@ -6,21 +6,21 @@ local ADDON_NAME, CL = ...
 -------------------------------------------------------------------------------
 
 CL.cmds = {}
-CL.cmds.toggle_names = {
+CL.cmds.toggleNames = {
     triggers = { 'full', 'f' },
     name = "Full Names",
     description = "Toggle between full item names and nicknames.",
     func = function() CL:ToggleFullNames() end,
 }
 
-CL.cmds.toggle_debug = {
+CL.cmds.toggleDebug = {
     triggers = { 'debug', 'd' },
     name = "Debug Messages",
     description = "Show debug messages",
     func = function() CL:ToggleDebug() end,
 }
 
-CL.cmds.open_options = {
+CL.cmds.openOptions = {
     triggers = { 'options', 'o' },
     name = "Options",
     description = "Open the options panel.",

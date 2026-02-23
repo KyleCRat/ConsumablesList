@@ -1,5 +1,4 @@
 local ADDON_NAME, CL = ...
-CL.abbv = "CL"
 
 
 -------------------------------------------------------------------------------
@@ -8,101 +7,42 @@ CL.abbv = "CL"
 
 local IMMEDIATELY = true
 
-local addon_color = "00bf40bf"
+local    fontSize = 30
+local     vHeight = 29
+local textOffset = 3
+local paddingBottom = -3 -- Adjust all text down
 
-local    font_size = 30
-local     v_height = 29
-local text_offset = 3
-local padding_bottom = -3 -- Adjust all text down
+local frameWidth = 300
 
-local frame_width = 300
-
-local full_item_names = false
+CL.fullItemNames = false
 
 local AH_MOUNT_SPELL_IDS = {
     465235, -- Trader's Gilded Brutosaur
     264058, -- Mighty Caravan Brutosaur
 }
 
+
 -------------------------------------------------------------------------------
---- Functions
+--- Display Functions
 -------------------------------------------------------------------------------
 
-function CL:Print(msg)
-    print("|c" .. addon_color .. ADDON_NAME .. ":|r " .. msg)
+function CL:HideItemGroup(groupName)
+    CL.frame.itemTexts[groupName].left:Hide()
+    CL.frame.itemTexts[groupName].right:Hide()
 end
 
-function CL:VPrint(msg)
-    if not verbose then return end
-
-    print("|c" .. addon_color .. CL.abbv .. ":|r " .. msg)
-end
-
-function CL:DeepCopy(orig)
-    local copy = {}
-    for k, v in pairs(orig) do
-        if type(v) == "table" then
-            copy[k] = CL:DeepCopy(v)
-        else
-            copy[k] = v
-        end
-    end
-
-    return copy
-end
-
-function CL:HexToRGB(hex)
-    hex = hex:gsub("#", "") -- Remove # if present
-    local r = tonumber(hex:sub(1, 2), 16) / 255
-    local g = tonumber(hex:sub(3, 4), 16) / 255
-    local b = tonumber(hex:sub(5, 6), 16) / 255
-
-    return r, g, b
-end
-
-function CL:GetSortedGroups()
-    local sorted = {}
-    for key, group in pairs(CL.db.item_groups) do
-        sorted[#sorted + 1] = { key = key, group = group }
-    end
-
-    table.sort(sorted, function(a, b)
-        return (a.group.order or 0) < (b.group.order or 0)
-    end)
-
-    return sorted
-end
-
-function CL:HideItemGroup(group_name)
-    CL.frame.item_texts[group_name].left:Hide()
-    CL.frame.item_texts[group_name].right:Hide()
-end
-
-function CL:ShowItemGroup(group_name)
-    CL.frame.item_texts[group_name].left:Show()
-    CL.frame.item_texts[group_name].right:Show()
-end
-
-
-function CL:ToggleFullNames()
-    full_item_names = not full_item_names
-    CL:Print("Using " .. (full_item_names and "Full Names" or "Nicknames"))
-    CL:Update(IMMEDIATELY)
-end
-
-function CL:ToggleDebug()
-    verbose = not verbose
-    CL:Print("debug turned " .. (verbose and "on" or "off"))
-    CL:Update(IMMEDIATELY)
+function CL:ShowItemGroup(groupName)
+    CL.frame.itemTexts[groupName].left:Show()
+    CL.frame.itemTexts[groupName].right:Show()
 end
 
 function CL:RebuildDisplay()
-    for group_id, texts in pairs(CL.frame.item_texts) do
+    for groupId, texts in pairs(CL.frame.itemTexts) do
         texts.left:Hide()
         texts.right:Hide()
     end
 
-    wipe(CL.frame.item_texts)
+    wipe(CL.frame.itemTexts)
     CL:Update(IMMEDIATELY)
 end
 
@@ -119,10 +59,10 @@ local function IsMountedOnAHMount()
     return false
 end
 
-function CL:HideOrShowUpdate(should_run_immediately)
-    should_run_immediately = should_run_immediately or false
+function CL:HideOrShowUpdate(shouldRunImmediately)
+    shouldRunImmediately = shouldRunImmediately or false
 
-    inInstance, instanceType = IsInInstance()
+    local inInstance, instanceType = IsInInstance()
 
     ---------------------------------------
     -- Checking if we should HIDE the frame
@@ -146,43 +86,43 @@ function CL:HideOrShowUpdate(should_run_immediately)
     or UnitIsDead("player")
     then
         CL:VPrint("Frame should be Hidden")
-        CL:Update(should_run_immediately)
+        CL:Update(shouldRunImmediately)
         CL.frame:Hide()
     else
         CL:VPrint("Frame should be Shown")
         CL.frame:Show()
-        CL:Update(should_run_immediately)
+        CL:Update(shouldRunImmediately)
     end
 end
 
-local update_is_throttled = false
-local min_update_interval = 15 -- Minimum time (seconds) between automatic updates
+local updateIsThrottled = false
+local minUpdateInterval = 15 -- Minimum time (seconds) between automatic updates
 
-function CL:Update(should_run_immediately)
-    should_run_immediately = should_run_immediately or false
+function CL:Update(shouldRunImmediately)
+    shouldRunImmediately = shouldRunImmediately or false
 
-    if update_is_throttled and not should_run_immediately then return end
+    if updateIsThrottled and not shouldRunImmediately then return end
 
-    update_is_throttled = true
+    updateIsThrottled = true
     local index = 0
 
-    for group_id, item_group in pairs(CL.db.item_groups) do
-        local    item_id = item_group.item_ids[1]
+    for groupId, itemGroup in pairs(CL.db.itemGroups) do
+        local    itemId = itemGroup.itemIds[1]
 
         -- Skip groups with no items
-        if not item_id then
-            if CL.frame.item_texts[group_id] then
-                CL:HideItemGroup(group_id)
+        if not itemId then
+            if CL.frame.itemTexts[groupId] then
+                CL:HideItemGroup(groupId)
             end
         else
 
-        local  item_name = C_Item.GetItemNameByID(item_id)
-        local      r,g,b = CL:HexToRGB(item_group.color)
-        local item_count = 0
+        local  itemName = C_Item.GetItemNameByID(itemId)
+        local      r,g,b = CL:HexToRGB(itemGroup.color)
+        local itemCount = 0
 
         -- Prevent LUA error if our item isn't in cache yet, re-try in a second
-        if not ((item_group and item_group.name) or item_name) then
-            CL.VPrint("CL: Item not cached, no name found for item_id: " .. item_id)
+        if not ((itemGroup and itemGroup.name) or itemName) then
+            CL:VPrint("CL: Item not cached, no name found for itemId: " .. itemId)
             C_Timer.After(1, function()
                 CL:Update(IMMEDIATELY)
             end)
@@ -190,89 +130,87 @@ function CL:Update(should_run_immediately)
             return
         end
 
-        for _, id in ipairs(item_group.item_ids) do
-            item_count = item_count + GetItemCount(id, false)
+        for _, id in ipairs(itemGroup.itemIds) do
+            itemCount = itemCount + GetItemCount(id, false)
         end
 
-        if not CL.frame.item_texts[group_id] then
-            CL.frame.item_texts[group_id] = {}
+        if not CL.frame.itemTexts[groupId] then
+            CL.frame.itemTexts[groupId] = {}
 
             -- Create the text for the item name on the right
-            CL.frame.item_texts[group_id].right = CL.frame:CreateFontString(nil, "OVERLAY")
-            CL.frame.item_texts[group_id].right:SetFontObject(CL.frame.font)
-            CL.frame.item_texts[group_id].right:SetTextColor(r, g, b, 1)
+            CL.frame.itemTexts[groupId].right = CL.frame:CreateFontString(nil, "OVERLAY")
+            CL.frame.itemTexts[groupId].right:SetFontObject(CL.frame.font)
+            CL.frame.itemTexts[groupId].right:SetTextColor(r, g, b, 1)
 
             -- Create the text for the item count on the left
-            CL.frame.item_texts[group_id].left = CL.frame:CreateFontString(nil, "OVERLAY")
-            CL.frame.item_texts[group_id].left:SetFontObject(CL.frame.font)
-            CL.frame.item_texts[group_id].left:SetTextColor(r, g, b, 1)
+            CL.frame.itemTexts[groupId].left = CL.frame:CreateFontString(nil, "OVERLAY")
+            CL.frame.itemTexts[groupId].left:SetFontObject(CL.frame.font)
+            CL.frame.itemTexts[groupId].left:SetTextColor(r, g, b, 1)
         end
 
-        local      item_name_text = ((item_group and item_group.name) or item_name)
-        local full_item_name_text = item_name
-        local     item_count_text = item_count
-
-        -- CL:VPrint(item_name .. ":" .. item_count)
+        local      itemNameText = ((itemGroup and itemGroup.name) or itemName)
+        local fullItemNameText = itemName
+        local     itemCountText = itemCount
 
         -- Update text for low vs out of an item
-        if item_count == 0 then
-            item_name_text = ("Out of " ..  item_name_text)
+        if itemCount == 0 then
+            itemNameText = ("Out of " ..  itemNameText)
         else
-            item_name_text = (item_name_text .. " Low")
+            itemNameText = (itemNameText .. " Low")
         end
 
         -- Check if `/cl f` was run and replace with full text value if so
-        item_name_text = (full_item_names and full_item_name_text) or item_name_text
+        itemNameText = (CL.fullItemNames and fullItemNameText) or itemNameText
 
-        CL.frame.item_texts[group_id].right:SetText(item_name_text)
-        CL.frame.item_texts[group_id].left:SetText(item_count_text)
+        CL.frame.itemTexts[groupId].right:SetText(itemNameText)
+        CL.frame.itemTexts[groupId].left:SetText(itemCountText)
 
         -- Show if there are less than the threshold of items
-        if item_count < item_group.threshold then
+        if itemCount < itemGroup.threshold then
             index = index + 1
-            CL:ShowItemGroup(group_id)
+            CL:ShowItemGroup(groupId)
         else
-            CL:HideItemGroup(group_id)
+            CL:HideItemGroup(groupId)
         end
 
-        end -- else (has item_id)
+        end -- else (has itemId)
     end
 
     -- Resize frame height to fit visible rows, width is fixed
-    local row_height = v_height
-    local frame_height = math.max(row_height, index * row_height)
+    local rowHeight = vHeight
+    local frameHeight = math.max(rowHeight, index * rowHeight)
 
     -- Reposition text rows in sorted order (top-down, so first group appears at top)
-    local row_index = index - 1
+    local rowIndex = index - 1
     for _, entry in ipairs(CL:GetSortedGroups()) do
-        local texts = CL.frame.item_texts[entry.key]
+        local texts = CL.frame.itemTexts[entry.key]
         if texts and texts.left:IsShown() then
-            local y_offset = (row_index * row_height) + padding_bottom
+            local yOffset = (rowIndex * rowHeight) + paddingBottom
             texts.right:ClearAllPoints()
-            texts.right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMLEFT", text_offset, y_offset)
+            texts.right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMLEFT", textOffset, yOffset)
 
             texts.left:ClearAllPoints()
-            texts.left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMLEFT", -text_offset, y_offset)
+            texts.left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMLEFT", -textOffset, yOffset)
 
-            row_index = row_index - 1
+            rowIndex = rowIndex - 1
         end
     end
 
-    CL.frame:SetHeight(frame_height)
+    CL.frame:SetHeight(frameHeight)
 
-    C_Timer.After(min_update_interval, function()
-        update_is_throttled = false
+    C_Timer.After(minUpdateInterval, function()
+        updateIsThrottled = false
     end)
 end
 
 
 -------------------------------------------------------------------------------
---- Initialization
+--- Frame Initialization
 -------------------------------------------------------------------------------
 
 -- Create the main frame
 CL.frame = CreateFrame("Frame", "ConsumablesListFrame", UIParent)
-CL.frame:SetSize(frame_width, 1)
+CL.frame:SetSize(frameWidth, 1)
 CL.frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 20, 200)
 CL.frame:SetMovable(true)
 CL.frame:SetClampedToScreen(true)
@@ -303,15 +241,15 @@ end
 LibEditMode:AddFrame(CL.frame, OnPositionChanged, { point = "BOTTOMLEFT", x = 20, y = 200 }, "Consumables List")
 LibEditMode:RegisterCallback("layout", OnLayoutChanged)
 
--- Set up custom font (using a WoW built-in font, or replace with your own font file)
+-- Set up custom font
 local FONT = "Interface\\AddOns\\ConsumablesList\\media\\fonts\\PTSansNarrow-Bold.ttf"
 
 CL.frame.font = CreateFont("ConsumablesListFont")
-CL.frame.font:SetFont(FONT, font_size, "OUTLINE")
+CL.frame.font:SetFont(FONT, fontSize, "OUTLINE")
 CL.frame.font:SetTextColor(1, 1, 1, 1)
 
 -- Container for text items
-CL.frame.item_texts = {}
+CL.frame.itemTexts = {}
 
 
 -------------------------------------------------------------------------------
@@ -325,20 +263,20 @@ local function EventHandler(self, event, arg1)
                 ConsumablesListDB = {}
             end
 
-            -- Initialize item_groups from saved data or defaults
-            if ConsumablesListDB.item_groups then
-                CL.db.item_groups = ConsumablesListDB.item_groups
+            -- Initialize itemGroups from saved data or defaults
+            if ConsumablesListDB.itemGroups then
+                CL.db.itemGroups = ConsumablesListDB.itemGroups
             else
-                CL.db.item_groups = CL:DeepCopy(CL.db.defaults)
-                ConsumablesListDB.item_groups = CL.db.item_groups
+                CL.db.itemGroups = CL:DeepCopy(CL.db.defaults)
+                ConsumablesListDB.itemGroups = CL.db.itemGroups
             end
 
             -- Backfill order for any groups that predate the order field
-            local next_order = 1
-            for _, group in pairs(CL.db.item_groups) do
+            local nextOrder = 1
+            for _, group in pairs(CL.db.itemGroups) do
                 if not group.order then
-                    group.order = next_order
-                    next_order = next_order + 1
+                    group.order = nextOrder
+                    nextOrder = nextOrder + 1
                 end
             end
 
@@ -354,7 +292,6 @@ local function EventHandler(self, event, arg1)
 
             CL.frame:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED") -- Mounting
 
-            CL.frame:RegisterEvent("PLAYER_ENTERING_WORLD") -- Login
             CL.frame:RegisterEvent("PLAYER_UPDATE_RESTING") -- Entering a City
             CL.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA") -- Area Change
 

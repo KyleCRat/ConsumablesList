@@ -10,6 +10,8 @@ Libs\LibEditMode\LibStub\LibStub.lua
 Libs\LibEditMode\embed.xml
 
 Database.lua
+Core.lua
+Widgets.lua
 Commands.lua
 Options.lua
-ConsumablesList.lua
+Display.lua

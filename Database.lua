@@ -6,7 +6,7 @@ CL.db = {}
 
 CL.db.defaults = {
     -- group_name = {
-    --     item_ids = {
+    --     itemIds = {
     --         123,
     --         456,
     --     },
@@ -14,14 +14,14 @@ CL.db.defaults = {
     --     color = '#hexhex'
     -- },
     weapon_enchantments = {
-        item_ids = {
+        itemIds = {
             224107, -- 11.0.0: Algari Mana Oil
         },
         threshold = 20,
         color = 'fd54c2'
     },
     damage_potion = {
-        item_ids = {
+        itemIds = {
             212265, -- 11.0.0: Tempered Potion R3
             212264, -- 11.0.0: Tempered Potion R2
         },
@@ -30,7 +30,7 @@ CL.db.defaults = {
         color = 'e1ee43',
     },
     healing_potion = {
-        item_ids = {
+        itemIds = {
             244839, -- 11.2.0: Invigorating healing Potion
         },
         name = "Health Pots",
@@ -38,7 +38,7 @@ CL.db.defaults = {
         color = 'b51f00',
     },
     invisbility_potion = {
-        item_ids = {
+        itemIds = {
             -- 212250, -- 11.0.0: Draught of Silent Footfalls
             191395, -- 10.0.0: Potion of the Hushed Zephyr
         },
@@ -47,7 +47,7 @@ CL.db.defaults = {
         color = 'c6dbe1',
     },
     flask = {
-        item_ids = {
+        itemIds = {
             212283, -- 11.0.0: Flask of Alchemical Chaos
         },
         name = "Flasks",
@@ -55,7 +55,7 @@ CL.db.defaults = {
         color = '#feb24a',
     },
     feast = {
-        item_ids = {
+        itemIds = {
             222733, -- 11.0.0 Feast of the Midnight Masquerade
         },
         name = "Feasts",
@@ -63,7 +63,7 @@ CL.db.defaults = {
         color = 'ffb18d'
     },
     hearty_feast = {
-        item_ids = {
+        itemIds = {
             222781, -- 11.0.0: Hearty Feat of the Midnight Masquerade
         },
         name = "Hearty Feasts",
@@ -71,7 +71,7 @@ CL.db.defaults = {
         color = "ffccc6",
     },
     hearty_food = {
-        item_ids = {
+        itemIds = {
             222776, -- 11.0.0: Hearty Beledar's Bounty
         },
         name = "Hearty Personal Food",
@@ -79,7 +79,7 @@ CL.db.defaults = {
         color = 'e27e5e'
     },
     auto_hammer = {
-        item_ids = {
+        itemIds = {
             132514, -- 7.0.0: Auto Hammer
         },
         name = "Auto Hammers",
@@ -87,7 +87,7 @@ CL.db.defaults = {
         color = 'f8b762',
     },
     jumper_cables = {
-        item_ids = {
+        itemIds = {
             221955, -- 11.0.0: Convincingly Realistic Jumper Cables
             221954,
         },
@@ -96,7 +96,7 @@ CL.db.defaults = {
         color = 'ccf4ad',
     },
     pausing_pylons = {
-        item_ids = {
+        itemIds = {
             221949, -- 11.0.0: Pausing Pylons
         },
         name = "Pausing Pylons",
