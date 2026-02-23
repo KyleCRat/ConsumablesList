@@ -4,7 +4,7 @@ local ADDON_NAME, CL = ...
 --- Database Config
 CL.db = {}
 
-CL.db.item_groups = {
+CL.db.defaults = {
     -- group_name = {
     --     item_ids = {
     --         123,

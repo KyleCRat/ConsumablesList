@@ -10,10 +10,9 @@ local IMMEDIATELY = true
 
 local addon_color = "00bf40bf"
 
-local      font_size = 30
-local       v_height = 28
-local  handle_offset = 32 -- Adjust Handle to the left
-local     mover_size = 32
+local    font_size = 30
+local     v_height = 28
+local text_offset = 4
 local padding_bottom = -3 -- Adjust all text down
 
 local full_item_names = false
@@ -37,11 +36,25 @@ function CL:VPrint(msg)
     print("|c" .. addon_color .. CL.abbv .. ":|r " .. msg)
 end
 
-local function hex_to_rgb(hex)
+function CL:DeepCopy(orig)
+    local copy = {}
+    for k, v in pairs(orig) do
+        if type(v) == "table" then
+            copy[k] = CL:DeepCopy(v)
+        else
+            copy[k] = v
+        end
+    end
+
+    return copy
+end
+
+function CL:HexToRGB(hex)
     hex = hex:gsub("#", "") -- Remove # if present
     local r = tonumber(hex:sub(1, 2), 16) / 255
     local g = tonumber(hex:sub(3, 4), 16) / 255
     local b = tonumber(hex:sub(5, 6), 16) / 255
+
     return r, g, b
 end
 
@@ -55,23 +68,6 @@ function CL:ShowItemGroup(group_name)
     CL.frame.item_texts[group_name].right:Show()
 end
 
-function CL:ToggleLock()
-    ConsumablesListDB.locked = not ConsumablesListDB.locked
-    CL:Lock(ConsumablesListDB.locked)
-    CL:Print("Frame " .. (ConsumablesListDB.locked and "L" or "Unl") .. "ocked")
-end
-
-function CL:Lock(locked)
-    if locked then
-        CL.frame.bg:Hide()
-        CL.frame.handle:Hide()
-        CL.frame:EnableMouse(false)
-    else
-        CL.frame.bg:Show()
-        CL.frame.handle:Show()
-        CL.frame:EnableMouse(true)
-    end
-end
 
 function CL:ToggleFullNames()
     full_item_names = not full_item_names
@@ -82,6 +78,16 @@ end
 function CL:ToggleDebug()
     verbose = not verbose
     CL:Print("debug turned " .. (verbose and "on" or "off"))
+    CL:Update(IMMEDIATELY)
+end
+
+function CL:RebuildDisplay()
+    for group_id, texts in pairs(CL.frame.item_texts) do
+        texts.left:Hide()
+        texts.right:Hide()
+    end
+
+    wipe(CL.frame.item_texts)
     CL:Update(IMMEDIATELY)
 end
 
@@ -146,8 +152,16 @@ function CL:Update(should_run_immediately)
 
     for group_id, item_group in pairs(CL.db.item_groups) do
         local    item_id = item_group.item_ids[1]
+
+        -- Skip groups with no items
+        if not item_id then
+            if CL.frame.item_texts[group_id] then
+                CL:HideItemGroup(group_id)
+            end
+        else
+
         local  item_name = C_Item.GetItemNameByID(item_id)
-        local      r,g,b = hex_to_rgb(item_group.color)
+        local      r,g,b = CL:HexToRGB(item_group.color)
         local item_count = 0
 
         -- Prevent LUA error if our item isn't in cache yet, re-try in a second
@@ -178,8 +192,6 @@ function CL:Update(should_run_immediately)
             CL.frame.item_texts[group_id].left:SetTextColor(r, g, b, 1)
         end
 
-        local y_offset = (index * (font_size + v_height - font_size)) + padding_bottom
-
         local      item_name_text = ((item_group and item_group.name) or item_name)
         local full_item_name_text = item_name
         local     item_count_text = item_count
@@ -196,10 +208,7 @@ function CL:Update(should_run_immediately)
         -- Check if `/cl f` was run and replace with full text value if so
         item_name_text = (full_item_names and full_item_name_text) or item_name_text
 
-        CL.frame.item_texts[group_id].right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMRIGHT", handle_offset + 2, y_offset)
         CL.frame.item_texts[group_id].right:SetText(item_name_text)
-
-        CL.frame.item_texts[group_id].left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMRIGHT", handle_offset + -2, y_offset)
         CL.frame.item_texts[group_id].left:SetText(item_count_text)
 
         -- Show if there are less than the threshold of items
@@ -209,7 +218,39 @@ function CL:Update(should_run_immediately)
         else
             CL:HideItemGroup(group_id)
         end
+
+        end -- else (has item_id)
     end
+
+    -- Resize frame to fit visible rows and reposition text
+    local visible_count = index
+    local row_height = v_height
+    local frame_height = math.max(1, visible_count * row_height)
+    local max_width = 1
+
+    -- Measure widths and reposition anchors
+    local row_index = 0
+    for group_id, texts in pairs(CL.frame.item_texts) do
+        if texts.left:IsShown() then
+            local left_width = texts.left:GetStringWidth()
+            local right_width = texts.right:GetStringWidth()
+            local total_width = left_width + right_width + (text_offset * 3)
+            if total_width > max_width then
+                max_width = total_width
+            end
+
+            local y_offset = (row_index * row_height) + padding_bottom
+            texts.right:ClearAllPoints()
+            texts.right:SetPoint("BOTTOMLEFT", CL.frame, "BOTTOMLEFT", text_offset, y_offset)
+
+            texts.left:ClearAllPoints()
+            texts.left:SetPoint("BOTTOMRIGHT", CL.frame, "BOTTOMLEFT", -text_offset, y_offset)
+
+            row_index = row_index + 1
+        end
+    end
+
+    CL.frame:SetSize(math.max(1, max_width), frame_height)
 
     C_Timer.After(min_update_interval, function()
         update_is_throttled = false
@@ -223,29 +264,36 @@ end
 
 -- Create the main frame
 CL.frame = CreateFrame("Frame", "ConsumablesListFrame", UIParent)
-CL.frame:SetSize(mover_size, mover_size)
+CL.frame:SetSize(1, 1)
 CL.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 CL.frame:SetMovable(true)
 CL.frame:SetClampedToScreen(true)
 CL.frame:Hide()
 
--- Create background
-CL.frame.bg = CL.frame:CreateTexture(nil, "BACKGROUND")
-CL.frame.bg:SetAllPoints(CL.frame)
-CL.frame.bg:SetColorTexture(0, 0, 0, 0.5)
+-- LibEditMode integration
+local LibEditMode = LibStub("LibEditMode")
 
--- Create mover texture
-CL.frame.handle = CL.frame:CreateTexture(nil, "BACKGROUND")
-CL.frame.handle:SetSize(mover_size - 2, mover_size - 2)
-CL.frame.handle:SetPoint("CENTER", CL.frame, "CENTER", 0, 0)
-CL.frame.handle:SetTexture("Interface\\CURSOR\\UI-Cursor-Move")
-CL.frame.handle:SetVertexColor(1, 1, 1, 1)
+local function OnPositionChanged(frame, layoutName, point, x, y)
+    if not ConsumablesListDB then return end
+    if not ConsumablesListDB.positions then
+        ConsumablesListDB.positions = {}
+    end
 
--- Make the frame draggable
-CL.frame:EnableMouse(true)
-CL.frame:RegisterForDrag("LeftButton")
-CL.frame:SetScript("OnDragStart", CL.frame.StartMoving)
-CL.frame:SetScript("OnDragStop", CL.frame.StopMovingOrSizing)
+    ConsumablesListDB.positions[layoutName] = { point = point, x = x, y = y }
+end
+
+local function OnLayoutChanged(layoutName)
+    if not ConsumablesListDB or not ConsumablesListDB.positions then return end
+
+    local pos = ConsumablesListDB.positions[layoutName]
+    if pos then
+        CL.frame:ClearAllPoints()
+        CL.frame:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
+    end
+end
+
+LibEditMode:AddFrame(CL.frame, OnPositionChanged, { point = "CENTER", x = 0, y = 0 }, "Consumables List")
+LibEditMode:RegisterCallback("layout", OnLayoutChanged)
 
 -- Set up custom font (using a WoW built-in font, or replace with your own font file)
 local FONT = "Interface\\AddOns\\ConsumablesList\\media\\fonts\\PTSansNarrow-Bold.ttf"
@@ -266,13 +314,15 @@ local function EventHandler(self, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == ADDON_NAME then
             if not ConsumablesListDB then
-                CL:Print("ConsumablesListDB not available")
-                ConsumablesListDB = {
-                    locked = false
-                }
+                ConsumablesListDB = {}
+            end
+
+            -- Initialize item_groups from saved data or defaults
+            if ConsumablesListDB.item_groups then
+                CL.db.item_groups = ConsumablesListDB.item_groups
             else
-                -- Set saved variables
-                CL:Lock(ConsumablesListDB.locked)
+                CL.db.item_groups = CL:DeepCopy(CL.db.defaults)
+                ConsumablesListDB.item_groups = CL.db.item_groups
             end
 
             CL.frame:UnregisterEvent("ADDON_LOADED")

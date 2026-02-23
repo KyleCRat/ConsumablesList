@@ -6,13 +6,6 @@ local ADDON_NAME, CL = ...
 -------------------------------------------------------------------------------
 
 CL.cmds = {}
-CL.cmds.toggle_lock = {
-    triggers = { 'lock', 'l' },
-    name = "Lock",
-    description = "Lock or Unlock the Frame.",
-    func = function() CL:ToggleLock() end,
-}
-
 CL.cmds.toggle_names = {
     triggers = { 'full', 'f' },
     name = "Full Names",
@@ -25,6 +18,13 @@ CL.cmds.toggle_debug = {
     name = "Debug Messages",
     description = "Show debug messages",
     func = function() CL:ToggleDebug() end,
+}
+
+CL.cmds.open_options = {
+    triggers = { 'options', 'o' },
+    name = "Options",
+    description = "Open the options panel.",
+    func = function() CL:OpenOptions() end,
 }
 
 

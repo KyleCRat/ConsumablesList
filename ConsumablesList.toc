@@ -6,6 +6,10 @@
 ## Category: Consumables
 ## SavedVariablesPerCharacter: ConsumablesListDB
 
+Libs\LibEditMode\LibStub\LibStub.lua
+Libs\LibEditMode\embed.xml
+
 Database.lua
 Commands.lua
+Options.lua
 ConsumablesList.lua
