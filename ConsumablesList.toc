@@ -4,10 +4,11 @@
 ## Author: Yvairel
 ## Version: 12.0.1-1
 ## Category: Consumables
+## IconTexture: Interface\AddOns\ConsumablesList\CLIcon.tga
 ## SavedVariables: ConsumablesListDB
 
-Libs\LibEditMode\LibStub\LibStub.lua
 Libs\LibEditMode\embed.xml
+Libs\LibEditMode\LibStub\LibStub.lua
 Libs\LibSharedMedia-3.0\lib.xml
 
 Database.lua

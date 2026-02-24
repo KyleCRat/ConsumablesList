@@ -1,0 +1,12 @@
+package-as: ConsumablesList
+
+manual-changelog:
+    filename: CHANGELOG.md
+    markup-type: markdown
+
+enable-nolib-creation: yes
+
+ignore:
+    - .pkgmeta
+    - .git
+    - "*.png"
