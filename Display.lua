@@ -7,8 +7,7 @@ local ADDON_NAME, CL = ...
 
 local IMMEDIATELY = true
 
-local    fontSize = 30
-local     vHeight = 29
+local     vHeight = 29  -- mutable; updated by CL:ApplyDisplaySettings()
 local textOffset = 3
 local paddingBottom = -3 -- Adjust all text down
 
@@ -59,39 +58,72 @@ local function IsMountedOnAHMount()
     return false
 end
 
+function CL:ShowFrame()
+    CL:VPrint("Frame should be Shown")
+    CL.frame:Show()
+    CL:Update(shouldRunImmediately)
+end
+
+function CL:HideFrame()
+    CL:VPrint("Frame should be Hidden")
+    CL:Update(shouldRunImmediately)
+    CL.frame:Hide()
+end
+
 function CL:HideOrShowUpdate(shouldRunImmediately)
     shouldRunImmediately = shouldRunImmediately or false
 
+    local settings = ConsumablesListDB and ConsumablesListDB.settings
+
+    -- Hide if the addon is disabled
+    if settings and not settings.enabled then
+        CL:VPrint("Frame should be Hidden (disabled)")
+        CL.frame:Hide()
+
+        return
+    end
+
     local inInstance, instanceType = IsInInstance()
 
-    ---------------------------------------
-    -- Checking if we should HIDE the frame
+    local showInNeighborhood  = not settings or settings.showInNeighborhood
+    local showOnAHMount       = not settings or settings.showOnAHMount
+    local showOutsideOfCities = not settings or settings.showOutsideOfCities
 
-    -- Hide if we are in combat lockdown
-    if InCombatLockdown()
+    -- If we are in combat lock down, hide the frame and early return
+    if InCombatLockdown() then CL:HideFrame(); return end
 
-    -- Hide if we are instanced unless
-    --   1. We are mounted on an AH Mount
-    --   2. We are in a neighborhood
-    or (inInstance and not (IsMountedOnAHMount() or
-                            instanceType == "neighborhood"))
+    -- Show if we are on an AH mount (with the setting enabled)
+    if (showOnAHMount and IsMountedOnAHMount()) then CL:ShowFrame(); return end
 
-    -- Hide if we are mounted unless
-    --   1. We are in a city or
-    --   2. We are mounted on an AH Mount
-    or (IsMounted() and not (IsResting() or
-                             IsMountedOnAHMount()))
+    ----------------------------------------------------------------------------
+    -- Checking if we should SHOW the frame
 
-    -- Hide if we are dead
-    or UnitIsDead("player")
+    -- Show if we are in a City
+    if IsResting()
+
+    -- Show if we are not in a city (with the setting enabled)
+    or (showOutsideOfCities and not IsResting())
     then
-        CL:VPrint("Frame should be Hidden")
-        CL:Update(shouldRunImmediately)
-        CL.frame:Hide()
+        ------------------------------------------------------------------------
+        -- Checking if we should override and HIDE the frame
+
+        -- Hide if we are mounted
+        if (IsMounted())
+
+        -- Hide if we are instanced unless
+        --   1. We are in a neighborhood
+        or (inInstance and not
+            (showInNeighborhood and instanceType == "neighborhood"))
+
+        -- Hide if we are a ghost
+        or UnitIsDead("player")
+        then
+            CL:HideFrame()
+        else
+            CL:ShowFrame()
+        end
     else
-        CL:VPrint("Frame should be Shown")
-        CL.frame:Show()
-        CL:Update(shouldRunImmediately)
+        CL:HideFrame()
     end
 end
 
@@ -245,11 +277,20 @@ LibEditMode:RegisterCallback("layout", OnLayoutChanged)
 local FONT = "Interface\\AddOns\\ConsumablesList\\media\\fonts\\PTSansNarrow-Bold.ttf"
 
 CL.frame.font = CreateFont("ConsumablesListFont")
-CL.frame.font:SetFont(FONT, fontSize, "OUTLINE")
+CL.frame.font:SetFont(FONT, 30, "OUTLINE")
 CL.frame.font:SetTextColor(1, 1, 1, 1)
 
 -- Container for text items
 CL.frame.itemTexts = {}
+
+function CL:ApplyDisplaySettings()
+    local settings = ConsumablesListDB.settings
+    local LSM = LibStub("LibSharedMedia-3.0")
+    local fontPath = LSM:Fetch("font", settings.fontName) or FONT
+    CL.frame.font:SetFont(fontPath, settings.fontSize, "OUTLINE")
+    vHeight = settings.lineHeight
+    CL:RebuildDisplay()
+end
 
 
 -------------------------------------------------------------------------------
@@ -280,6 +321,22 @@ local function EventHandler(self, event, arg1)
                 end
             end
 
+            -- Initialize settings from saved data, backfilling any missing keys from defaults
+            if not ConsumablesListDB.settings then
+                ConsumablesListDB.settings = {}
+            end
+
+            for key, defaultValue in pairs(CL.db.settingsDefaults) do
+                if ConsumablesListDB.settings[key] == nil then
+                    ConsumablesListDB.settings[key] = defaultValue
+                end
+            end
+
+            -- Sync runtime state from settings
+            CL.fullItemNames = ConsumablesListDB.settings.useFullNames
+            CL:ApplyDisplaySettings()
+            CL:RegisterSettings()
+
             CL.frame:UnregisterEvent("ADDON_LOADED")
 
             CL.frame:RegisterEvent("BAG_UPDATE")            -- Main inventory changes
@@ -297,21 +354,31 @@ local function EventHandler(self, event, arg1)
 
             CL:Print("Loaded. Use " .. SLASH_CONSUMABLESLIST1 .. " for commands.")
         end
-    elseif event == "PLAYER_REGEN_DISABLED" then
-        CL:VPrint("Hiding for combat enter: " .. event)
-        CL.frame:Hide()
-    elseif event == "PLAYER_REGEN_ENABLED" or           -- Exiting Combat
-           event == "PLAYER_UPDATE_RESTING" or          -- Entering City
-           event == "PLAYER_MOUNT_DISPLAY_CHANGED" then -- Mounting
-        CL:VPrint("Update IMMEDIATELY for: " .. event)
-        CL:HideOrShowUpdate(IMMEDIATELY)
-    elseif event == "BAG_UPDATE" or                     -- Inventory changes
-           event == "ITEM_PUSH" then                    -- Immediate loot feedback
-        CL:VPrint("Update IMMEDIATELY for: " .. event)
-        CL:HideOrShowUpdate(IMMEDIATELY)
     else
-        CL:VPrint("Update LAZILY for: " .. event)
-        CL:HideOrShowUpdate()
+        -- Skip all processing when addon is disabled
+        local settings = ConsumablesListDB and ConsumablesListDB.settings
+        if settings and not settings.enabled then
+            CL.frame:Hide()
+
+            return
+        end
+
+        if event == "PLAYER_REGEN_DISABLED" then
+            CL:VPrint("Hiding for combat enter: " .. event)
+            CL.frame:Hide()
+        elseif event == "PLAYER_REGEN_ENABLED" or           -- Exiting Combat
+               event == "PLAYER_UPDATE_RESTING" or          -- Entering City
+               event == "PLAYER_MOUNT_DISPLAY_CHANGED" then -- Mounting
+            CL:VPrint("Update IMMEDIATELY for: " .. event)
+            CL:HideOrShowUpdate(IMMEDIATELY)
+        elseif event == "BAG_UPDATE" or                     -- Inventory changes
+               event == "ITEM_PUSH" then                    -- Immediate loot feedback
+            CL:VPrint("Update IMMEDIATELY for: " .. event)
+            CL:HideOrShowUpdate(IMMEDIATELY)
+        else
+            CL:VPrint("Update LAZILY for: " .. event)
+            CL:HideOrShowUpdate()
+        end
     end
 end
 

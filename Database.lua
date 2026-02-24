@@ -104,3 +104,14 @@ CL.db.defaults = {
         color = '65ebe7',
     },
 }
+
+CL.db.settingsDefaults = {
+    enabled = true,
+    fontName = "PTSansNarrow-Bold",
+    fontSize = 30,
+    lineHeight = 29,
+    useFullNames = false,
+    showInNeighborhood = true,
+    showOnAHMount = true,
+    showOutsideOfCities = false,
+}

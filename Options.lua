@@ -1102,12 +1102,6 @@ local function buildOptionsFrame()
     frame.bagScrollChild = bagChild
 
     CL.optionsFrame = frame
-
-    -- Register with Settings panel
-    local category = Settings.RegisterCanvasLayoutCategory(frame, "Consumables List")
-    category.ID = ADDON_NAME
-    Settings.RegisterAddOnCategory(category)
-    CL.optionsCategory = category
 end
 
 -------------------------------------------------------------------------------
@@ -1125,4 +1119,127 @@ function CL:OpenOptions()
         CL:RefreshOptionsEditor()
         CL:RefreshBagPanel()
     end
+end
+
+
+-------------------------------------------------------------------------------
+--- Settings Panel (WoW Settings API - Vertical Layout)
+-------------------------------------------------------------------------------
+
+local function GetFontOptions()
+    local LSM = LibStub("LibSharedMedia-3.0")
+    local container = Settings.CreateControlTextContainer()
+    for _, fontName in ipairs(LSM:List("font")) do
+        container:Add(fontName, fontName)
+    end
+
+    return container:GetData()
+end
+
+function CL:RegisterSettings()
+    local settings = ConsumablesListDB.settings
+    local category, layout = Settings.RegisterVerticalLayoutCategory("Consumables List")
+
+    -- Open Group Editor button
+    local openEditorInitializer = CreateSettingsButtonInitializer(
+        "Group Editor", "Open", function() CL:OpenOptions() end,
+        "Open the item group editor (/cl o)", false
+    )
+    layout:AddInitializer(openEditorInitializer)
+
+    layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("General"))
+
+    -- Enable Addon
+    local enabledSetting = Settings.RegisterAddOnSetting(
+        category, "enabled", "enabled", settings, "boolean",
+        "Enable Addon", CL.db.settingsDefaults.enabled
+    )
+    Settings.CreateCheckbox(category, enabledSetting, "Show or hide the consumables list HUD.")
+    Settings.SetOnValueChangedCallback("enabled", function(_, setting, newValue)
+        CL:HideOrShowUpdate(true)
+    end)
+
+    -- Always Use Full Names
+    local fullNamesSetting = Settings.RegisterAddOnSetting(
+        category, "useFullNames", "useFullNames", settings, "boolean",
+        "Always Use Full Names", CL.db.settingsDefaults.useFullNames
+    )
+    Settings.CreateCheckbox(category, fullNamesSetting, "Show full item names instead of group nicknames.")
+    Settings.SetOnValueChangedCallback("useFullNames", function(_, setting, newValue)
+        CL.fullItemNames = newValue
+        CL:RebuildDisplay()
+    end)
+
+    layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Display"))
+
+    -- Font dropdown
+    local fontSetting = Settings.RegisterAddOnSetting(
+        category, "fontName", "fontName", settings, "string",
+        "Font", CL.db.settingsDefaults.fontName
+    )
+    Settings.CreateDropdown(category, fontSetting, GetFontOptions, "Select the font for the HUD text.")
+    Settings.SetOnValueChangedCallback("fontName", function(_, setting, newValue)
+        CL:ApplyDisplaySettings()
+    end)
+
+    -- Font Size slider
+    local fontSizeSetting = Settings.RegisterAddOnSetting(
+        category, "fontSize", "fontSize", settings, "number",
+        "Font Size", CL.db.settingsDefaults.fontSize
+    )
+    local fontSizeOptions = Settings.CreateSliderOptions(12, 48, 1)
+    Settings.CreateSlider(category, fontSizeSetting, fontSizeOptions, "Set the font size for the HUD text.")
+    Settings.SetOnValueChangedCallback("fontSize", function(_, setting, newValue)
+        CL:ApplyDisplaySettings()
+    end)
+
+    -- Line Height slider
+    local lineHeightSetting = Settings.RegisterAddOnSetting(
+        category, "lineHeight", "lineHeight", settings, "number",
+        "Line Height", CL.db.settingsDefaults.lineHeight
+    )
+    local lineHeightOptions = Settings.CreateSliderOptions(14, 60, 1)
+    Settings.CreateSlider(category, lineHeightSetting, lineHeightOptions, "Set the row height for the HUD text.")
+    Settings.SetOnValueChangedCallback("lineHeight", function(_, setting, newValue)
+        CL:ApplyDisplaySettings()
+    end)
+
+    layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Visibility"))
+
+    -- Show outside of cities
+    local outsideOfCitySetting = Settings.RegisterAddOnSetting(
+        category, "showOutsideOfCities", "showOutsideOfCities", settings, "boolean",
+        "Show Outside of Cities", CL.db.settingsDefaults.showOutsideOfCities
+    )
+    Settings.CreateCheckbox(category, outsideOfCitySetting, "Show the list when outside of a city.")
+    Settings.SetOnValueChangedCallback("showOutsideOfCities", function(_, setting, newValue)
+        CL:HideOrShowUpdate(true)
+    end)
+
+    -- Show in Neighborhood
+    local neighborhoodSetting = Settings.RegisterAddOnSetting(
+        category, "showInNeighborhood", "showInNeighborhood", settings, "boolean",
+        "Show in Neighborhood", CL.db.settingsDefaults.showInNeighborhood
+    )
+    Settings.CreateCheckbox(category, neighborhoodSetting, "Show the list when inside a neighborhood instance.")
+    Settings.SetOnValueChangedCallback("showInNeighborhood", function(_, setting, newValue)
+        CL:HideOrShowUpdate(true)
+    end)
+
+    -- Show on AH Mount
+    local ahMountSetting = Settings.RegisterAddOnSetting(
+        category, "showOnAHMount", "showOnAHMount", settings, "boolean",
+        "Show on AH Mount", CL.db.settingsDefaults.showOnAHMount
+    )
+    Settings.CreateCheckbox(category, ahMountSetting, "Show the list when mounted on a Brutosaur auction house mount.")
+    Settings.SetOnValueChangedCallback("showOnAHMount", function(_, setting, newValue)
+        CL:HideOrShowUpdate(true)
+    end)
+
+    Settings.RegisterAddOnCategory(category)
+    CL.settingsCategory = category
+end
+
+function CL:OpenSettings()
+    Settings.OpenToCategory(CL.settingsCategory:GetID())
 end

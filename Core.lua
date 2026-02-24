@@ -8,6 +8,10 @@ CL.abbv = "CL"
 
 local addonColor = "00bf40bf"
 
+local LSM = LibStub("LibSharedMedia-3.0")
+LSM:Register("font", "PTSansNarrow-Bold",
+    "Interface\\AddOns\\ConsumablesList\\media\\fonts\\PTSansNarrow-Bold.ttf")
+
 
 -------------------------------------------------------------------------------
 --- Print Functions
@@ -78,4 +82,13 @@ function CL:ToggleDebug()
     CL.verbose = not CL.verbose
     CL:Print("debug turned " .. (CL.verbose and "on" or "off"))
     CL:Update(true)
+end
+
+function CL:ToggleEnabled()
+    if not ConsumablesListDB or not ConsumablesListDB.settings then return end
+
+    local newValue = not ConsumablesListDB.settings.enabled
+    ConsumablesListDB.settings.enabled = newValue
+    CL:Print("Addon " .. (newValue and "enabled" or "disabled"))
+    CL:HideOrShowUpdate(true)
 end

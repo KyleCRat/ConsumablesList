@@ -8,6 +8,7 @@
 
 Libs\LibEditMode\LibStub\LibStub.lua
 Libs\LibEditMode\embed.xml
+Libs\LibSharedMedia-3.0\lib.xml
 
 Database.lua
 Core.lua

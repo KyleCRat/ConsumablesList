@@ -27,6 +27,20 @@ CL.cmds.openOptions = {
     func = function() CL:OpenOptions() end,
 }
 
+CL.cmds.openSettings = {
+    triggers = { 'settings', 's' },
+    name = "Settings",
+    description = "Open the settings panel.",
+    func = function() CL:OpenSettings() end,
+}
+
+CL.cmds.toggleAddon = {
+    triggers = { 'toggle', 't' },
+    name = "Toggle",
+    description = "Toggle the addon on or off.",
+    func = function() CL:ToggleEnabled() end,
+}
+
 
 -------------------------------------------------------------------------------
 --- Slash Command Handling
