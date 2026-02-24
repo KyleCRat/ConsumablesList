@@ -102,7 +102,7 @@ function CL:HideOrShowUpdate(shouldRunImmediately)
     if IsResting()
 
     -- Show if we are not in a city (with the setting enabled)
-    or (showOutsideOfCities and not IsResting())
+    or showOutsideOfCities
     then
         ------------------------------------------------------------------------
         -- Checking if we should override and HIDE the frame
