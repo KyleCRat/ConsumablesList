@@ -595,6 +595,7 @@ local function addItemToSelectedGroup(itemId)
         end
     end
 
+    CL:RefreshGroupList()
     CL:RefreshOptionsEditor()
     CL:RefreshBagPanel()
     CL:RebuildDisplay()
