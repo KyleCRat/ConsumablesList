@@ -1189,6 +1189,8 @@ function CL:RegisterSettings()
         "Font Size", CL.db.settingsDefaults.fontSize
     )
     local fontSizeOptions = Settings.CreateSliderOptions(12, 48, 1)
+    fontSizeOptions:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right,
+        function(value) return tostring(math.floor(value + 0.5)) end)
     Settings.CreateSlider(category, fontSizeSetting, fontSizeOptions, "Set the font size for the HUD text.")
     Settings.SetOnValueChangedCallback("fontSize", function(_, setting, newValue)
         CL:ApplyDisplaySettings()
@@ -1200,6 +1202,8 @@ function CL:RegisterSettings()
         "Line Height", CL.db.settingsDefaults.lineHeight
     )
     local lineHeightOptions = Settings.CreateSliderOptions(14, 60, 1)
+    lineHeightOptions:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right,
+        function(value) return tostring(math.floor(value + 0.5)) end)
     Settings.CreateSlider(category, lineHeightSetting, lineHeightOptions, "Set the row height for the HUD text.")
     Settings.SetOnValueChangedCallback("lineHeight", function(_, setting, newValue)
         CL:ApplyDisplaySettings()

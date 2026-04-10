@@ -32,18 +32,6 @@ end
 --- Utility Functions
 -------------------------------------------------------------------------------
 
-function CL:DeepCopy(orig)
-    local copy = {}
-    for k, v in pairs(orig) do
-        if type(v) == "table" then
-            copy[k] = CL:DeepCopy(v)
-        else
-            copy[k] = v
-        end
-    end
-
-    return copy
-end
 
 function CL:HexToRGB(hex)
     hex = hex:gsub("#", "") -- Remove # if present

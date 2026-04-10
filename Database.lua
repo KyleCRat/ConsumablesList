@@ -17,10 +17,10 @@ CL.db.defaults = {
         itemIds = {
             243734, -- 12.0.0: Thalassian Phoenix Oil R2
             243733, -- 12.0.0: Thalassian Phoenix Oil R1
-            243734, -- 12.0.0: Oil of Dawn R2
-            243733, -- 12.0.0: Oil of Dawn R1
-            243734, -- 12.0.0: Smuggler's Enchanted Edge R2
-            243733, -- 12.0.0: Smuggler's Enchanted Edge R1
+            243736, -- 12.0.0: Oil of Dawn R2
+            243735, -- 12.0.0: Oil of Dawn R1
+            243738, -- 12.0.0: Smuggler's Enchanted Edge R2
+            243737, -- 12.0.0: Smuggler's Enchanted Edge R1
             237369, -- 12.0.0: Refulgent Weightstone R2
             237367, -- 12.0.0: Refulgent Weightstone R1
             237371, -- 12.0.0: Refulgent Whetstone R2

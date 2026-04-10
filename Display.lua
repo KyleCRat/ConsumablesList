@@ -58,13 +58,13 @@ local function IsMountedOnAHMount()
     return false
 end
 
-function CL:ShowFrame()
+function CL:ShowFrame(shouldRunImmediately)
     CL:VPrint("Frame should be Shown")
     CL.frame:Show()
     CL:Update(shouldRunImmediately)
 end
 
-function CL:HideFrame()
+function CL:HideFrame(shouldRunImmediately)
     CL:VPrint("Frame should be Hidden")
     CL:Update(shouldRunImmediately)
     CL.frame:Hide()
@@ -90,10 +90,10 @@ function CL:HideOrShowUpdate(shouldRunImmediately)
     local showOutsideOfCities = not settings or settings.showOutsideOfCities
 
     -- If we are in combat lock down, hide the frame and early return
-    if InCombatLockdown() then CL:HideFrame(); return end
+    if InCombatLockdown() then CL:HideFrame(shouldRunImmediately); return end
 
     -- Show if we are on an AH mount (with the setting enabled)
-    if (showOnAHMount and IsMountedOnAHMount()) then CL:ShowFrame(); return end
+    if (showOnAHMount and IsMountedOnAHMount()) then CL:ShowFrame(shouldRunImmediately); return end
 
     ----------------------------------------------------------------------------
     -- Checking if we should SHOW the frame
@@ -118,12 +118,12 @@ function CL:HideOrShowUpdate(shouldRunImmediately)
         -- Hide if we are a ghost
         or UnitIsDead("player")
         then
-            CL:HideFrame()
+            CL:HideFrame(shouldRunImmediately)
         else
-            CL:ShowFrame()
+            CL:ShowFrame(shouldRunImmediately)
         end
     else
-        CL:HideFrame()
+        CL:HideFrame(shouldRunImmediately)
     end
 end
 
@@ -308,7 +308,7 @@ local function EventHandler(self, event, arg1)
             if ConsumablesListDB.itemGroups then
                 CL.db.itemGroups = ConsumablesListDB.itemGroups
             else
-                CL.db.itemGroups = CL:DeepCopy(CL.db.defaults)
+                CL.db.itemGroups = CopyTable(CL.db.defaults)
                 ConsumablesListDB.itemGroups = CL.db.itemGroups
             end
 
