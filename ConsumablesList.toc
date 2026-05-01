@@ -2,7 +2,7 @@
 ## Title: Consumables List
 ## Notes: Text list of Consumables that shows when below set thresholds
 ## Author: Yvairel
-## Version: 12.0.5-2
+## Version: 12.0.5-3
 ## Category: Consumables
 ## IconTexture: Interface\AddOns\ConsumablesList\CLIcon.tga
 ## SavedVariables: ConsumablesListDB
