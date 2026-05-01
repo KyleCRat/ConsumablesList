@@ -17,3 +17,4 @@ Widgets.lua
 Commands.lua
 Options.lua
 Display.lua
+Auctionator.lua
