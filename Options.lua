@@ -996,6 +996,7 @@ local function buildOptionsFrame()
     frame:SetClampedToScreen(true)
     frame:EnableMouse(true)
     frame:SetFrameStrata("HIGH")
+    frame:SetToplevel(true)
     frame:RegisterForDrag("LeftButton")
     frame:Hide()
 
