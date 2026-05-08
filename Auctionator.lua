@@ -40,11 +40,12 @@ local function buildAndSubmitList()
             itemCount = itemCount + GetItemCount(id, false)
         end
 
-        if itemCount >= group.threshold then
-            -- skip groups at or above threshold
+        local restockTo = group.restock or group.threshold
+        if itemCount >= restockTo then
+            -- skip groups at or above restock target
         else
 
-        local needed = group.threshold - itemCount
+        local needed = restockTo - itemCount
         for _, id in ipairs(group.itemIds) do
             local itemName = C_Item.GetItemNameByID(id)
             if not itemName or not isAuctionable(id) then

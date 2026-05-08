@@ -312,12 +312,16 @@ local function EventHandler(self, event, arg1)
                 ConsumablesListDB.itemGroups = CL.db.itemGroups
             end
 
-            -- Backfill order for any groups that predate the order field
+            -- Backfill order and restock for any groups that predate those fields
             local nextOrder = 1
             for _, group in pairs(CL.db.itemGroups) do
                 if not group.order then
                     group.order = nextOrder
                     nextOrder = nextOrder + 1
+                end
+
+                if not group.restock then
+                    group.restock = group.threshold or 0
                 end
             end
 

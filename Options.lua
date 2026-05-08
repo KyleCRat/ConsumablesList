@@ -513,6 +513,8 @@ function CL:RefreshOptionsEditor()
     editor.nameBox:SetText(group.name or "")
     editor.thresholdBox:SetText(tostring(group.threshold or 0))
     editor.thresholdSlider:SetValue(math.min(group.threshold or 0, 200))
+    editor.restockBox:SetText(tostring(group.restock or 0))
+    editor.restockSlider:SetValue(math.min(group.restock or 0, 200))
     editor.colorBox:SetText(group.color or "ffffff")
 
     -- Update color swatch
@@ -747,11 +749,16 @@ local function buildEditor(parent, rightWidth, editorHeight)
     editor:Hide()
 
     local labelX = 0
-    local fieldX = 116
 
-    -- Name field
+    -- Row 1: Display Name + Color
+    local colorSwatchSize = 22
+    local colorBoxWidth = 90
+    local colorSectionWidth = 50 + colorBoxWidth + 8 + colorSwatchSize
+    local nameFieldX = 100
+    local nameBoxWidth = rightWidth - nameFieldX - colorSectionWidth - INSET_PADDING - 8
+
     CL.UI.CreateLabel(editor, "Display Name:", labelX, -5)
-    editor.nameBox = CL.UI.CreateStyledEditBox(editor, rightWidth - fieldX - INSET_PADDING, fieldX, 0)
+    editor.nameBox = CL.UI.CreateStyledEditBox(editor, nameBoxWidth, nameFieldX, 0)
     editor.nameBox:SetScript("OnEnterPressed", function(self)
         self:ClearFocus()
         local group = CL.db.itemGroups[selectedGroupKey]
@@ -769,44 +776,9 @@ local function buildEditor(parent, rightWidth, editorHeight)
         CL:RebuildDisplay()
     end)
 
-    -- Threshold field
-    CL.UI.CreateLabel(editor, "Threshold:", labelX, -35)
-    editor.thresholdBox = CL.UI.CreateStyledEditBox(editor, 60, fieldX, -30)
-    editor.thresholdBox:SetNumeric(true)
-
-    local slider = CreateFrame("Slider", nil, editor, "MinimalSliderTemplate")
-    slider:SetSize(rightWidth - fieldX - 60 - INSET_PADDING - 16, 20)
-    slider:SetPoint("LEFT", editor.thresholdBox, "RIGHT", 8, 0)
-    slider:SetMinMaxValues(0, 200)
-    slider:SetValueStep(1)
-    slider:SetObeyStepOnDrag(true)
-
-    editor.thresholdSlider = slider
-
-    slider:SetScript("OnValueChanged", function(self, value)
-        local val = math.floor(value + 0.5)
-        editor.thresholdBox:SetText(tostring(val))
-        local group = CL.db.itemGroups[selectedGroupKey]
-        if not group then return end
-
-        group.threshold = val
-        CL:RebuildDisplay()
-    end)
-
-    editor.thresholdBox:SetScript("OnEnterPressed", function(self)
-        self:ClearFocus()
-        local group = CL.db.itemGroups[selectedGroupKey]
-        if not group then return end
-
-        local val = self:GetNumber()
-        group.threshold = val
-        editor.thresholdSlider:SetValue(math.min(val, 200))
-        CL:RebuildDisplay()
-    end)
-
-    -- Color field
-    CL.UI.CreateLabel(editor, "Color:", labelX, -65)
-    editor.colorBox = CL.UI.CreateStyledEditBox(editor, 90, fieldX, -60)
+    local colorLabelX = nameFieldX + nameBoxWidth + 8
+    CL.UI.CreateLabel(editor, "Color:", colorLabelX, -5)
+    editor.colorBox = CL.UI.CreateStyledEditBox(editor, colorBoxWidth, colorLabelX + 50, 0)
     editor.colorBox:SetMaxLetters(6)
     editor.colorBox:HookScript("OnEditFocusGained", function(self)
         self:HighlightText()
@@ -821,9 +793,8 @@ local function buildEditor(parent, rightWidth, editorHeight)
         end
     end)
 
-    -- Clickable color swatch that opens the color picker
     local swatchBtn = CreateFrame("Button", nil, editor, "BackdropTemplate")
-    swatchBtn:SetSize(22, 22)
+    swatchBtn:SetSize(colorSwatchSize, colorSwatchSize)
     swatchBtn:SetPoint("LEFT", editor.colorBox, "RIGHT", 8, 0)
     swatchBtn:SetBackdrop(CL.UI.CONTAINER_BACKDROP)
     swatchBtn:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
@@ -880,11 +851,86 @@ local function buildEditor(parent, rightWidth, editorHeight)
         end
     end)
 
+    -- Row 2: Threshold + Restock (side by side sliders)
+    local halfWidth = math.floor((rightWidth - INSET_PADDING) / 2)
+    local sliderFieldX = 76
+    local sliderBoxWidth = 46
+    local sliderPadding = 16
+
+    -- Threshold (left half)
+    CL.UI.CreateLabel(editor, "Threshold:", labelX, -35)
+    editor.thresholdBox = CL.UI.CreateStyledEditBox(editor, sliderBoxWidth, sliderFieldX, -30)
+    editor.thresholdBox:SetNumeric(true)
+
+    local thresholdSlider = CreateFrame("Slider", nil, editor, "MinimalSliderTemplate")
+    thresholdSlider:SetSize(halfWidth - sliderFieldX - sliderBoxWidth - sliderPadding, 20)
+    thresholdSlider:SetPoint("LEFT", editor.thresholdBox, "RIGHT", 8, 0)
+    thresholdSlider:SetMinMaxValues(0, 200)
+    thresholdSlider:SetValueStep(1)
+    thresholdSlider:SetObeyStepOnDrag(true)
+    editor.thresholdSlider = thresholdSlider
+
+    thresholdSlider:SetScript("OnValueChanged", function(self, value)
+        local val = math.floor(value + 0.5)
+        editor.thresholdBox:SetText(tostring(val))
+        local group = CL.db.itemGroups[selectedGroupKey]
+        if not group then return end
+
+        group.threshold = val
+        CL:RebuildDisplay()
+    end)
+
+    editor.thresholdBox:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+        local group = CL.db.itemGroups[selectedGroupKey]
+        if not group then return end
+
+        local val = self:GetNumber()
+        group.threshold = val
+        editor.thresholdSlider:SetValue(math.min(val, 200))
+        CL:RebuildDisplay()
+    end)
+
+    -- Restock (right half)
+    local restockLabelX = halfWidth + 8
+    CL.UI.CreateLabel(editor, "Restock:", restockLabelX, -35)
+    editor.restockBox = CL.UI.CreateStyledEditBox(editor, sliderBoxWidth,
+        restockLabelX + sliderFieldX, -30)
+    editor.restockBox:SetNumeric(true)
+
+    local restockSlider = CreateFrame("Slider", nil, editor, "MinimalSliderTemplate")
+    restockSlider:SetSize(rightWidth - restockLabelX - sliderFieldX - sliderBoxWidth
+        - sliderPadding - INSET_PADDING, 20)
+    restockSlider:SetPoint("LEFT", editor.restockBox, "RIGHT", 8, 0)
+    restockSlider:SetMinMaxValues(0, 200)
+    restockSlider:SetValueStep(1)
+    restockSlider:SetObeyStepOnDrag(true)
+    editor.restockSlider = restockSlider
+
+    restockSlider:SetScript("OnValueChanged", function(self, value)
+        local val = math.floor(value + 0.5)
+        editor.restockBox:SetText(tostring(val))
+        local group = CL.db.itemGroups[selectedGroupKey]
+        if not group then return end
+
+        group.restock = val
+    end)
+
+    editor.restockBox:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+        local group = CL.db.itemGroups[selectedGroupKey]
+        if not group then return end
+
+        local val = self:GetNumber()
+        group.restock = val
+        editor.restockSlider:SetValue(math.min(val, 200))
+    end)
+
     -- Items label
-    CL.UI.CreateLabel(editor, "Items in Group:", labelX, -100)
+    CL.UI.CreateLabel(editor, "Items in Group:", labelX, -70)
 
     -- Items scroll container
-    local itemsTop = 118
+    local itemsTop = 88
     local bottomControlsHeight = 36
     local itemsContainerHeight = editorHeight - itemsTop - bottomControlsHeight
 
@@ -895,7 +941,7 @@ local function buildEditor(parent, rightWidth, editorHeight)
     -- Add by ID row
     local addRowY = -(itemsTop + itemsContainerHeight + 8)
     CL.UI.CreateLabel(editor, "Add Item by ID:", labelX, addRowY - 5)
-    editor.addIdBox = CL.UI.CreateStyledEditBox(editor, 100, fieldX, addRowY)
+    editor.addIdBox = CL.UI.CreateStyledEditBox(editor, 100, nameFieldX, addRowY)
     editor.addIdBox:SetNumeric(true)
     editor.addIdBox:SetScript("OnEnterPressed", function(self)
         local itemId = self:GetNumber()
@@ -1004,6 +1050,7 @@ local function buildOptionsFrame()
         CL.db.itemGroups[key] = {
             itemIds = {},
             threshold = 10,
+            restock = 10,
             color = "ffffff",
             name = "New Group",
             order = getNextOrder(),

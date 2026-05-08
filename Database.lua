@@ -27,7 +27,8 @@ CL.db.defaults = {
             237370, -- 12.0.0: Refulgent Whetstone R1
         },
         name = "Weapon Enhancements",
-        threshold = 20,
+        threshold = 10,
+        restock = 20,
         color = 'fd54c2',
     },
     combatPotion = {
@@ -44,7 +45,8 @@ CL.db.defaults = {
             241287, -- 12.0.0: Light's Preservation R1
         },
         name = "Combat Potions",
-        threshold = 40,
+        threshold = 20,
+        restock = 40,
         color = 'e1ee43',
     },
     manaPotion = {
@@ -53,7 +55,8 @@ CL.db.defaults = {
             241301, -- 12.0.0: Lightfused Mana Potion R1
         },
         name = "Mana Potions",
-        threshold = 40,
+        threshold = 20,
+        restock = 40,
         color = 'e1ee43',
     },
     healingPotion = {
@@ -62,7 +65,8 @@ CL.db.defaults = {
             241305, -- 12.0.0 Silvermoon Health Potion R1
         },
         name = "Health Potions",
-        threshold = 40,
+        threshold = 20,
+        restock = 40,
         color = 'b51f00',
     },
     invisbilityPotion = {
@@ -71,7 +75,8 @@ CL.db.defaults = {
             191395, -- 10.0.0: Potion of the Hushed Zephyr
         },
         name = "Invisibility Potions",
-        threshold = 20,
+        threshold = 10,
+        restock = 20,
         color = 'c6dbe1',
     },
     masteryFlask = {
@@ -86,7 +91,8 @@ CL.db.defaults = {
             241325, -- 12.0.0: Flask of the Blood Knights R1
         },
         name = "Flasks",
-        threshold = 20,
+        threshold = 5,
+        restock = 10,
         color = '#feb24a',
     },
     heartyFeast = {
@@ -99,24 +105,10 @@ CL.db.defaults = {
             242272, -- [Rare] Quel'dorei Medley | 98 Stam, 65 Highest Secondary Stat
         },
         name = "Feasts",
-        threshold = 20,
+        threshold = 10,
+        restock = 20,
         color = 'ffb18d'
     },
-    -- boon = {
-    --     itemIds = {
-    --         267240, -- 12.0.0: Boon of Fortitude
-    --         267235, -- 12.0.0: Boon of Vitality
-    --         267236, -- 12.0.0: Boon of Speed
-    --         267238, -- 12.0.0: Boon of Potency
-    --         267239, -- 12.0.0: Boon of Possibilities
-    --         267648, -- 12.0.0: Boon of Vigor
-    --         267241, -- 12.0.0: Boon of Abstinence
-    --         267237, -- 12.0.0: Boon of Power
-    --     },
-    --     name = "Boons",
-    --     threshold = 5,
-    --     color = 'ffb18d'
-    -- },
     food = {
         itemIds = {
             242275, -- [Rare] Royal Roast                   | 50 Primary Stat
@@ -136,6 +128,7 @@ CL.db.defaults = {
         },
         name = "Food",
         threshold = 10,
+        restock = 40,
         color = 'e27e5e'
     },
     heartyFood = {
@@ -164,6 +157,7 @@ CL.db.defaults = {
         },
         name = "Hearty Food",
         threshold = 10,
+        restock = 20,
         color = 'e27e5e'
     },
     autoHammer = {
@@ -172,6 +166,7 @@ CL.db.defaults = {
         },
         name = "Auto Hammers",
         threshold = 5,
+        restock = 10,
         color = 'f8b762',
     },
     jumperCables = {
@@ -181,14 +176,16 @@ CL.db.defaults = {
         },
         name = "Jumper Cables",
         threshold = 5,
+        restock = 10,
         color = 'ccf4ad',
     },
     pausingPylons = {
         itemIds = {
-            221949, -- 11.0.0: Pausing Pylons
+            248409, -- 12.0.0: W-47CH DOG
         },
         name = "Pausing Pylons",
         threshold = 5,
+        restock = 10,
         color = '65ebe7',
     },
     augmentRune = {
@@ -197,6 +194,7 @@ CL.db.defaults = {
         },
         name = "Augment Runes",
         threshold = 5,
+        restock = 10,
         color = 'ba009f',
     },
 }
