@@ -1150,6 +1150,152 @@ local function buildOptionsFrame()
         GROUP_LIST_WIDTH + INSET_PADDING, -bagContainerTop)
     frame.bagScrollChild = bagChild
 
+    -- Scale button (left side of frame)
+    local SCALE_MIN = 50
+    local SCALE_MAX = 150
+    local SCALE_STEP = 5
+    local POPUP_SLIDER_HEIGHT = 120
+
+    local scaleBtn = CreateFrame("Button", nil, frame, "BackdropTemplate")
+    scaleBtn:SetSize(80, 20)
+    scaleBtn:SetPoint("RIGHT", closeBtn, "LEFT", -4, 0)
+    scaleBtn:SetBackdrop(CL.UI.BACKDROP)
+    scaleBtn:SetBackdropColor(0.08, 0.08, 0.08, 0.95)
+    scaleBtn:SetBackdropBorderColor(unpack(CL.UI.BORDER_NORMAL))
+
+    local scaleBtnText = scaleBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    scaleBtnText:SetPoint("CENTER", scaleBtn, "CENTER", 0, 0)
+
+    scaleBtn:SetScript("OnEnter", function(self)
+        self:SetBackdropBorderColor(unpack(CL.UI.BORDER_HIGHLIGHT))
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT", 0, 0)
+        GameTooltip:SetText("Click and drag to adjust scale")
+        GameTooltip:Show()
+    end)
+
+    scaleBtn:SetScript("OnLeave", function(self)
+        self:SetBackdropBorderColor(unpack(CL.UI.BORDER_NORMAL))
+        GameTooltip:Hide()
+    end)
+
+    -- Popup slider layout
+    local POPUP_WIDTH = 44
+    local POPUP_PADDING_X = 12
+    local POPUP_PADDING_Y = 24
+    local POPUP_LABEL_GAP = 4
+    local POPUP_HEIGHT = POPUP_SLIDER_HEIGHT + (POPUP_PADDING_Y * 2)
+
+    local popupSlider = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    popupSlider:SetSize(POPUP_WIDTH, POPUP_HEIGHT)
+    popupSlider:SetBackdrop(CL.UI.BACKDROP)
+    popupSlider:SetBackdropColor(0.08, 0.08, 0.08, 0.95)
+    popupSlider:SetBackdropBorderColor(unpack(CL.UI.BORDER_HIGHLIGHT))
+    popupSlider:SetFrameStrata("TOOLTIP")
+    popupSlider:Hide()
+
+    local sliderTrack = popupSlider:CreateTexture(nil, "BACKGROUND")
+    sliderTrack:SetSize(2, POPUP_SLIDER_HEIGHT)
+    sliderTrack:SetPoint("CENTER", popupSlider, "CENTER", 0, 0)
+    sliderTrack:SetColorTexture(0.4, 0.4, 0.4, 0.8)
+
+    local slider = CreateFrame("Slider", nil, popupSlider, "MinimalSliderTemplate")
+    slider:SetOrientation("VERTICAL")
+    slider:SetSize(20, POPUP_SLIDER_HEIGHT)
+    slider:SetPoint("CENTER", popupSlider, "CENTER", 0, 0)
+    slider:SetMinMaxValues(SCALE_MIN, SCALE_MAX)
+    slider:SetValueStep(SCALE_STEP)
+    slider:SetObeyStepOnDrag(true)
+    slider:EnableMouse(false)
+
+    local popupLabel = popupSlider:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    popupLabel:SetPoint("BOTTOM", slider, "TOP", 0, POPUP_LABEL_GAP)
+    popupLabel:SetText("Scale")
+    popupLabel:SetTextColor(unpack(CL.UI.GOLD))
+
+    local popupValue = popupSlider:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    popupValue:SetPoint("TOP", slider, "BOTTOM", 0, -POPUP_LABEL_GAP)
+
+    local dragStartY = nil
+
+    local function snapToStep(val)
+        return math.floor(val / SCALE_STEP + 0.5) * SCALE_STEP
+    end
+
+    -- Vertical sliders map min=top, max=bottom. We invert so up=bigger.
+    local function toSlider(realVal)
+        return SCALE_MAX + SCALE_MIN - realVal
+    end
+
+    local function fromSlider(sliderVal)
+        return SCALE_MAX + SCALE_MIN - sliderVal
+    end
+
+    local function applyScale(val)
+        local scale = val / 100
+        scaleBtnText:SetText("Scale: " .. val .. "%")
+        popupValue:SetText(val .. "%")
+        frame:SetScale(scale)
+        ConsumablesListDB.settings.optionsScale = scale
+    end
+
+    local function finishScaleDrag()
+        if not dragStartY then return end
+        dragStartY = nil
+
+        popupSlider:SetScript("OnUpdate", nil)
+        popupSlider:Hide()
+    end
+
+    scaleBtn:SetScript("OnMouseDown", function(self, button)
+        if button ~= "LeftButton" then return end
+        GameTooltip:Hide()
+
+        local mouseX, mouseY = GetCursorPosition()
+        local uiScale = UIParent:GetEffectiveScale()
+        dragStartY = mouseY / uiScale
+        local popupWidth = popupSlider:GetWidth()
+
+        popupSlider:ClearAllPoints()
+        popupSlider:SetPoint("TOP", UIParent, "BOTTOMLEFT",
+            mouseX / uiScale, dragStartY + POPUP_HEIGHT / 2)
+        popupSlider:Show()
+
+        popupSlider:SetScript("OnUpdate", function()
+            if not IsMouseButtonDown("LeftButton") then
+                finishScaleDrag()
+
+                return
+            end
+
+            local _, cursorY = GetCursorPosition()
+            cursorY = cursorY / UIParent:GetEffectiveScale()
+            local delta = cursorY - dragStartY
+
+            local pixelsPerUnit = POPUP_SLIDER_HEIGHT * 2
+                / (SCALE_MAX - SCALE_MIN)
+            local valueDelta = delta / pixelsPerUnit
+            local currentReal = fromSlider(slider:GetValue())
+            local newVal = snapToStep(currentReal + valueDelta)
+            newVal = math.max(SCALE_MIN, math.min(SCALE_MAX, newVal))
+
+            if newVal ~= currentReal then
+                slider:SetValue(toSlider(newVal))
+                dragStartY = cursorY
+            end
+        end)
+    end)
+
+    slider:SetScript("OnValueChanged", function(self, value)
+        applyScale(math.floor(fromSlider(value) + 0.5))
+    end)
+
+    local savedScale = ConsumablesListDB.settings.optionsScale or 1
+    frame:SetScale(savedScale)
+    local initVal = math.floor(savedScale * 100 + 0.5)
+    slider:SetValue(toSlider(initVal))
+    scaleBtnText:SetText("Scale: " .. initVal .. "%")
+    popupValue:SetText(initVal .. "%")
+
     CL.optionsFrame = frame
 end
 

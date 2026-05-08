@@ -207,6 +207,8 @@ CL.db.settingsDefaults = {
     lineHeight   = 29,
     useFullNames = false,
 
+    optionsScale = 1,
+
     showInNeighborhood  = true,
     showOnAHMount       = true,
     showOutsideOfCities = false,
