@@ -7,7 +7,7 @@ local ADDON_NAME, CL = ...
 
 local IMMEDIATELY = true
 
-local     vHeight = 29  -- mutable; updated by CL:ApplyDisplaySettings()
+local vHeight = 29  -- mutable; updated by CL:ApplyDisplaySettings()
 local textOffset = 3
 local paddingBottom = -3 -- Adjust all text down
 

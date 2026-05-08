@@ -31,7 +31,7 @@ local dragState = {
 
 -- Item class filters: classID -> { name, icon }
 local ITEM_CLASS_FILTERS = {
-    { classID = 0,  name = "Consumable",        icon = 134830 },  -- INV_Potion_93 (red potion)
+    { classID = 0,  name = "Consumable",         icon = 134830 },  -- INV_Potion_93 (red potion)
     { classID = 7,  name = "Tradeskill",         icon = 132996 },  -- Trade_Engineering
     { classID = 8,  name = "Item Enhancement",   icon = 135225 },  -- Spell_Holy_GreaterHeal (enchant scroll)
     { classID = 2,  name = "Weapon",             icon = 135274 },  -- INV_Sword_04
@@ -1026,7 +1026,7 @@ local function buildOptionsFrame()
     titleDivider:SetHeight(2)
     titleDivider:SetPoint("TOPLEFT", frame, "TOPLEFT", INSET_PADDING, -36)
     titleDivider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET_PADDING, -36)
-    titleDivider:SetColorTexture(0.3, 0.3, 0.3, 1)
+    titleDivider:SetColorTexture(0.2, 0.2, 0.2, 1)
 
     -- Content area (below divider)
     local content = CreateFrame("Frame", nil, frame)
@@ -1072,7 +1072,7 @@ local function buildOptionsFrame()
     vSep:SetWidth(2)
     vSep:SetPoint("TOPLEFT", content, "TOPLEFT", GROUP_LIST_WIDTH + 6, 0)
     vSep:SetPoint("BOTTOMLEFT", content, "BOTTOMLEFT", GROUP_LIST_WIDTH + 6, 0)
-    vSep:SetColorTexture(0.3, 0.3, 0.3, 1)
+    vSep:SetColorTexture(0.2, 0.2, 0.2, 1)
 
     ---------------------------------------------------------------------------
     -- Right panel: Editor (top) + Bag items (bottom)
@@ -1089,7 +1089,7 @@ local function buildOptionsFrame()
     hSep:SetHeight(2)
     hSep:SetPoint("TOPLEFT", content, "TOPLEFT", GROUP_LIST_WIDTH + INSET_PADDING, -bagSectionTop)
     hSep:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, -bagSectionTop)
-    hSep:SetColorTexture(0.3, 0.3, 0.3, 1)
+    hSep:SetColorTexture(0.2, 0.2, 0.2, 1)
 
     -- Bag items label and filter buttons
     local bagLabel = CL.UI.CreateLabel(content, "Inventory (Click to add / remove from Group):",
