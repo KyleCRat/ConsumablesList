@@ -1,8 +1,8 @@
-## Interface: 120001, 120005
+## Interface: 120005, 120007
 ## Title: Consumables List
 ## Notes: Text list of Consumables that shows when below set thresholds
 ## Author: Yvairel
-## Version: 12.0.5-3
+## Version: 12.0.7-4
 ## Category: Consumables
 ## IconTexture: Interface\AddOns\ConsumablesList\CLIcon.tga
 ## SavedVariables: ConsumablesListDB

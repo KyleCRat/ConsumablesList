@@ -1,11 +1,11 @@
 # Changelog
 
+## [12.0.7-4] - 2026-06-16
+- Update supported WoW interface versions for 12.0.7
+- Add an options menu scale setting
+- Add a restock slider
+- Fix child frame layering by updating `SetTopLevel` usage
+- Apply minor cosmetic updates
+
 ## [12.0.5-3] - 2026-05-01
 - Add Auctionator shopping list integration
-
-## [12.0.5-2] - 2026-04-10
-
-### Fixes
-- Fix `shouldRunImmediately` not being passed through `ShowFrame`/`HideFrame`, so throttle bypass now works correctly
-- Replace hand-rolled `DeepCopy` with Blizzard's built-in `CopyTable()`
-- Add value labels to Settings panel sliders (Font Size, Line Height)
