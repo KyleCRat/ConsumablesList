@@ -7,6 +7,5 @@ manual-changelog:
 enable-nolib-creation: yes
 
 ignore:
-    - .pkgmeta
-    - .git
+    - TODO.md
     - "*.png"
