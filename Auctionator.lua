@@ -15,7 +15,7 @@ local UNBOUND_TYPES = {
 }
 
 local function isAuctionable(itemId)
-    local bindType = select(14, GetItemInfo(itemId))
+    local bindType = select(14, C_Item.GetItemInfo(itemId))
 
     return bindType and UNBOUND_TYPES[bindType]
 end
@@ -37,7 +37,7 @@ local function buildAndSubmitList()
 
         local itemCount = 0
         for _, id in ipairs(group.itemIds) do
-            itemCount = itemCount + GetItemCount(id, false)
+            itemCount = itemCount + C_Item.GetItemCount(id, false)
         end
 
         local restockTo = group.restock or group.threshold

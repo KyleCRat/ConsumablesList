@@ -163,7 +163,7 @@ function CL:Update(shouldRunImmediately)
         end
 
         for _, id in ipairs(itemGroup.itemIds) do
-            itemCount = itemCount + GetItemCount(id, false)
+            itemCount = itemCount + C_Item.GetItemCount(id, false)
         end
 
         if not CL.frame.itemTexts[groupId] then

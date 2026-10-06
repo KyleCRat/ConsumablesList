@@ -626,7 +626,7 @@ function CL:RefreshBagPanel()
                 local passesFilter = true
                 local hasAnyFilter = next(activeBagFilters) ~= nil
                 if hasAnyFilter then
-                    local classID = select(12, GetItemInfo(info.itemID))
+                    local classID = select(12, C_Item.GetItemInfo(info.itemID))
                     if classID == nil or not activeBagFilters[classID] then
                         passesFilter = false
                     end
